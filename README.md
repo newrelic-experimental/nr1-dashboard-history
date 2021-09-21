@@ -25,4 +25,4 @@ nr1 create
 
 ## Security
 
-New Relic is committed to the privacy and security of our customers and their data; review our [security policy](https://github.com/newrelic-experimental/nr1-dashboard-history/security) for details.
+New Relic is committed to the privacy and security of our customers and their data; review our [security policy](https://github.com/newrelic-experimental/nr1-dashboard-history/security/policy) for details.
