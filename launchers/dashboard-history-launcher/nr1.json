@@ -1,0 +1,7 @@
+{
+  "schemaType": "LAUNCHER",
+  "id": "dashboard-history-launcher",
+  "displayName": "DashboardHistoryLauncher",
+  "description": "View the change history of your dashbaords, and restore deleted dashboard",
+  "rootNerdletId": "2fbb85e8-e728-4d86-982b-c1a05cb9fc0b.main-nerdlet"
+}
