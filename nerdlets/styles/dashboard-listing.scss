@@ -1,0 +1,9 @@
+.dashboard-listing-container {
+  @include defaultPanel;
+  height: 100%;
+
+  .dashboard-listing-table {
+    @include defaultPanel;
+    height: 100%;
+  }
+}
