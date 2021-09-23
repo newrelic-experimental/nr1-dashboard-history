@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React from 'react'
 import {
   HeadingText,
   Spinner,
@@ -7,8 +7,8 @@ import {
   TableHeaderCell,
   TableRow,
   TableRowCell,
+  Button,
 } from 'nr1'
-import sortBy from 'lodash.sortBy'
 import {
   getSinceClause,
   formatDate,
@@ -19,12 +19,16 @@ import {
   entityByDomainTypeQuery,
   accountsQuery,
 } from '../../common/utils/query'
-export default class DashboardListing extends Component {
+import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
+export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
     dashboards: [],
     column: 0,
-    sortingType: TableHeaderCell.SORTING_TYPE.NONE,
+    sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
+    restoreModalHidden: true,
+    restoreModalMounted: false,
+    selectedDashboard: null,
   }
 
   state = {
@@ -119,6 +123,19 @@ export default class DashboardListing extends Component {
       .catch(error => console.error('error loading dashboard names', error))
   }
 
+  handleClickRestore = dashboard =>
+    this.setState({
+      restoreModalHidden: false,
+      restoreModalMounted: true,
+      selectedDashboard: dashboard,
+    })
+  handleCloseRestoreModal = () =>
+    this.setState({
+      restoreModalHidden: true,
+      selectedDashboard: null,
+    })
+  handleHideRestoreModal = () => this.setState({ restoreModalMounted: false })
+
   handleTableSort(column, evt, { nextSortingType }) {
     if (column === this.state.column) {
       this.setState({ sortingType: nextSortingType })
@@ -130,100 +147,125 @@ export default class DashboardListing extends Component {
     }
   }
 
-  renderTable = data => {
-    const sorted = sortBy(Object.values(data), 'dashboardName')
-    return (
-      <Table items={sorted}>
-        <TableHeader>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 0
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 0)}
-            value={({ item }) => item.dashboardName}
-            width="2fr"
-          >
-            Dashboard Name
-          </TableHeaderCell>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 1
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 1)}
-            value={({ item }) => item.accountName}
-            width="1.5fr"
-          >
-            Account Name
-          </TableHeaderCell>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 2
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 2)}
-            value={({ item }) => item.deletedBy}
-            width="1.5fr"
-          >
-            Deleted By
-          </TableHeaderCell>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 3
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 3)}
-            value={({ item }) => item.deletedOn}
-          >
-            Deleted On
-          </TableHeaderCell>
-          <TableHeaderCell></TableHeaderCell>
-        </TableHeader>
-        {({ item }) => (
-          <TableRow>
-            <TableRowCell>{item.dashboardName}</TableRowCell>
-            <TableRowCell>{item.accountName}</TableRowCell>
-            <TableRowCell>{item.deletedBy}</TableRowCell>
-            <TableRowCell>
-              {item.deletedOn && formatDate(item.deletedOn)}
-            </TableRowCell>
-            <TableRowCell></TableRowCell>
-          </TableRow>
-        )}
-      </Table>
-    )
-  }
+  renderTable = data => (
+    <Table items={Object.values(data)}>
+      <TableHeader>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 0
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 0)}
+          value={({ item }) => item.dashboardName}
+          width="2fr"
+        >
+          Dashboard Name
+        </TableHeaderCell>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 1
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 1)}
+          value={({ item }) => item.accountName}
+          width="1.5fr"
+        >
+          Account Name
+        </TableHeaderCell>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 2
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 2)}
+          value={({ item }) => item.deletedBy}
+          width="1.5fr"
+        >
+          Deleted By
+        </TableHeaderCell>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 3
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 3)}
+          value={({ item }) => item.deletedOn}
+        >
+          Deleted On
+        </TableHeaderCell>
+        <TableHeaderCell></TableHeaderCell>
+      </TableHeader>
+      {({ item }) => (
+        <TableRow>
+          <TableRowCell>{item.dashboardName}</TableRowCell>
+          <TableRowCell>{item.accountName}</TableRowCell>
+          <TableRowCell>{item.deletedBy}</TableRowCell>
+          <TableRowCell>
+            {item.deletedOn && formatDate(item.deletedOn)}
+          </TableRowCell>
+          <TableRowCell>
+            {item.deletedBy && (
+              <div className="button-row">
+                <Button
+                  sizeType={Button.SIZE_TYPE.SMALL}
+                  onClick={() => this.handleClickRestore(item)}
+                >
+                  Restore
+                </Button>
+              </div>
+            )}
+          </TableRowCell>
+        </TableRow>
+      )}
+    </Table>
+  )
 
   render() {
-    const { loading, dashboards } = this.state
+    const {
+      loading,
+      dashboards,
+      restoreModalHidden,
+      restoreModalMounted,
+      selectedDashboard,
+    } = this.state
     const { timeRange } = this.props
+
     return (
-      <div className="dashboard-listing-container">
-        <HeadingText type={HeadingText.TYPE.HEADING_2}>
-          Dashboard Listings
-        </HeadingText>
-        <HeadingText
-          className="date-sub-heading"
-          type={HeadingText.TYPE.HEADING_5}
-        >
-          {formatRelativeDate(timeRange)}
-        </HeadingText>
-        {loading && <Spinner />}
-        {!loading && (
-          <div className="dashboard-listing-table">
-            {this.renderTable(dashboards)}
-          </div>
+      <>
+        <div className="dashboard-listing-container">
+          <HeadingText type={HeadingText.TYPE.HEADING_2}>
+            Dashboard Listings
+          </HeadingText>
+          <HeadingText
+            className="sub-heading_date"
+            type={HeadingText.TYPE.HEADING_5}
+          >
+            {formatRelativeDate(timeRange)}
+          </HeadingText>
+          {loading && <Spinner />}
+          {!loading && (
+            <div className="dashboard-listing-table">
+              {this.renderTable(dashboards)}
+            </div>
+          )}
+        </div>
+        {!restoreModalHidden && restoreModalMounted && (
+          <RestoreDashboardModal
+            hidden={this.state.restoreModalHidden}
+            onClose={this.handleCloseRestoreModal}
+            onHideEnd={this.handleHideRestoreModal}
+            dashboard={selectedDashboard}
+          />
         )}
-      </div>
+      </>
     )
   }
 }
