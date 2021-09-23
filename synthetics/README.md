@@ -16,7 +16,7 @@ The events are written to a custom event called `DasbhoardGuidNameMap`. Each eve
 
 - `dashboardGuid`: the dashboard GUID
 - `dashboardName`: the user-friendly name assigned to the dashboard
-- `accountIdentifier`: the id of the account the dashboard belongs to (note that `accountId` is a reserved name, and can't be used as a custom event attribute name)
+- `account`: the id of the account the dashboard belongs to (note that `accountId` is a reserved name, and can't be used as a custom event attribute name)
 - `accountName`: the name of the account the dashboard belongs to
 
 ## Why are there two scripts?
