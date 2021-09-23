@@ -10,6 +10,8 @@
     "uuid": "2fbb85e8-e728-4d86-982b-c1a05cb9fc0b"
   },
   "dependencies": {
+    "dayjs": "^1.10.7",
+    "lodash.sortby": "^4.7.0",
     "prop-types": "^15.6.2",
     "react": "^16.6.3",
     "react-dom": "^16.6.3"
