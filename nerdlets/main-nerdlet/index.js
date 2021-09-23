@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  nerdlet,
   AutoSizer,
   PlatformStateContext,
   NerdletStateContext,
@@ -9,18 +10,33 @@ import {
 import DashboardListing from '../components/dashboard-listing/DashboardListing'
 
 export default class Wrapper extends React.Component {
+  componentDidMount() {
+    nerdlet.setConfig({
+      accountPicker: true,
+    })
+  }
+
   render() {
     return (
       <PlatformStateContext.Consumer>
-        {({ timeRange }) => (
+        {({ timeRange, accountId }) => (
           <NerdletStateContext.Consumer>
             {nerdletUrlState => (
               <AutoSizer>
                 {({ width, height }) => (
-                  <div style={{ width, height, overflowX: 'hidden' }}>
+                  <div
+                    style={{
+                      width,
+                      height,
+                      overflowX: 'hidden',
+                    }}
+                  >
                     <Layout fullHeight={true}>
                       <LayoutItem type={LayoutItem.TYPE.MAIN}>
-                        <DashboardListing />
+                        <DashboardListing
+                          accountId={accountId}
+                          timeRange={timeRange}
+                        />
                       </LayoutItem>
                     </Layout>
                   </div>
