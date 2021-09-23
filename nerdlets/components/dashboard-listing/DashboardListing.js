@@ -8,7 +8,6 @@ import {
   TableRow,
   TableRowCell,
 } from 'nr1'
-import sortBy from 'lodash.sortBy'
 import {
   getSinceClause,
   formatDate,
@@ -24,7 +23,7 @@ export default class DashboardListing extends Component {
     loading: true,
     dashboards: [],
     column: 0,
-    sortingType: TableHeaderCell.SORTING_TYPE.NONE,
+    sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
   }
 
   state = {
@@ -130,78 +129,75 @@ export default class DashboardListing extends Component {
     }
   }
 
-  renderTable = data => {
-    const sorted = sortBy(Object.values(data), 'dashboardName')
-    return (
-      <Table items={sorted}>
-        <TableHeader>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 0
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 0)}
-            value={({ item }) => item.dashboardName}
-            width="2fr"
-          >
-            Dashboard Name
-          </TableHeaderCell>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 1
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 1)}
-            value={({ item }) => item.accountName}
-            width="1.5fr"
-          >
-            Account Name
-          </TableHeaderCell>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 2
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 2)}
-            value={({ item }) => item.deletedBy}
-            width="1.5fr"
-          >
-            Deleted By
-          </TableHeaderCell>
-          <TableHeaderCell
-            sortable
-            sortingType={
-              this.state.column === 3
-                ? this.state.sortingType
-                : TableHeaderCell.SORTING_TYPE.NONE
-            }
-            onClick={this.handleTableSort.bind(this, 3)}
-            value={({ item }) => item.deletedOn}
-          >
-            Deleted On
-          </TableHeaderCell>
-          <TableHeaderCell></TableHeaderCell>
-        </TableHeader>
-        {({ item }) => (
-          <TableRow>
-            <TableRowCell>{item.dashboardName}</TableRowCell>
-            <TableRowCell>{item.accountName}</TableRowCell>
-            <TableRowCell>{item.deletedBy}</TableRowCell>
-            <TableRowCell>
-              {item.deletedOn && formatDate(item.deletedOn)}
-            </TableRowCell>
-            <TableRowCell></TableRowCell>
-          </TableRow>
-        )}
-      </Table>
-    )
-  }
+  renderTable = data => (
+    <Table items={Object.values(data)}>
+      <TableHeader>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 0
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 0)}
+          value={({ item }) => item.dashboardName}
+          width="2fr"
+        >
+          Dashboard Name
+        </TableHeaderCell>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 1
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 1)}
+          value={({ item }) => item.accountName}
+          width="1.5fr"
+        >
+          Account Name
+        </TableHeaderCell>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 2
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 2)}
+          value={({ item }) => item.deletedBy}
+          width="1.5fr"
+        >
+          Deleted By
+        </TableHeaderCell>
+        <TableHeaderCell
+          sortable
+          sortingType={
+            this.state.column === 3
+              ? this.state.sortingType
+              : TableHeaderCell.SORTING_TYPE.NONE
+          }
+          onClick={this.handleTableSort.bind(this, 3)}
+          value={({ item }) => item.deletedOn}
+        >
+          Deleted On
+        </TableHeaderCell>
+        <TableHeaderCell></TableHeaderCell>
+      </TableHeader>
+      {({ item }) => (
+        <TableRow>
+          <TableRowCell>{item.dashboardName}</TableRowCell>
+          <TableRowCell>{item.accountName}</TableRowCell>
+          <TableRowCell>{item.deletedBy}</TableRowCell>
+          <TableRowCell>
+            {item.deletedOn && formatDate(item.deletedOn)}
+          </TableRowCell>
+          <TableRowCell></TableRowCell>
+        </TableRow>
+      )}
+    </Table>
+  )
 
   render() {
     const { loading, dashboards } = this.state
