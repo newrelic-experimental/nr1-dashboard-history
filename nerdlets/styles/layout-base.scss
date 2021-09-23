@@ -16,9 +16,13 @@
   box-sizing: border-box;
 }
 
-.date-sub-heading {
+.sub-heading_date {
   padding-top: 0.25rem;
   color: $grey7;
+}
+
+.button-row {
+  display: flex;
 }
 
 .empty-state {

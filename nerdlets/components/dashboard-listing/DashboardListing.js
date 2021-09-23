@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React from 'react'
 import {
   HeadingText,
   Spinner,
@@ -7,6 +7,7 @@ import {
   TableHeaderCell,
   TableRow,
   TableRowCell,
+  Button,
 } from 'nr1'
 import {
   getSinceClause,
@@ -18,12 +19,16 @@ import {
   entityByDomainTypeQuery,
   accountsQuery,
 } from '../../common/utils/query'
-export default class DashboardListing extends Component {
+import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
+export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
     dashboards: [],
     column: 0,
     sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
+    restoreModalHidden: true,
+    restoreModalMounted: false,
+    selectedDashboard: null,
   }
 
   state = {
@@ -118,6 +123,19 @@ export default class DashboardListing extends Component {
       .catch(error => console.error('error loading dashboard names', error))
   }
 
+  handleClickRestore = dashboard =>
+    this.setState({
+      restoreModalHidden: false,
+      restoreModalMounted: true,
+      selectedDashboard: dashboard,
+    })
+  handleCloseRestoreModal = () =>
+    this.setState({
+      restoreModalHidden: true,
+      selectedDashboard: null,
+    })
+  handleHideRestoreModal = () => this.setState({ restoreModalMounted: false })
+
   handleTableSort(column, evt, { nextSortingType }) {
     if (column === this.state.column) {
       this.setState({ sortingType: nextSortingType })
@@ -193,33 +211,61 @@ export default class DashboardListing extends Component {
           <TableRowCell>
             {item.deletedOn && formatDate(item.deletedOn)}
           </TableRowCell>
-          <TableRowCell></TableRowCell>
+          <TableRowCell>
+            {item.deletedBy && (
+              <div className="button-row">
+                <Button
+                  sizeType={Button.SIZE_TYPE.SMALL}
+                  onClick={() => this.handleClickRestore(item)}
+                >
+                  Restore
+                </Button>
+              </div>
+            )}
+          </TableRowCell>
         </TableRow>
       )}
     </Table>
   )
 
   render() {
-    const { loading, dashboards } = this.state
+    const {
+      loading,
+      dashboards,
+      restoreModalHidden,
+      restoreModalMounted,
+      selectedDashboard,
+    } = this.state
     const { timeRange } = this.props
+
     return (
-      <div className="dashboard-listing-container">
-        <HeadingText type={HeadingText.TYPE.HEADING_2}>
-          Dashboard Listings
-        </HeadingText>
-        <HeadingText
-          className="date-sub-heading"
-          type={HeadingText.TYPE.HEADING_5}
-        >
-          {formatRelativeDate(timeRange)}
-        </HeadingText>
-        {loading && <Spinner />}
-        {!loading && (
-          <div className="dashboard-listing-table">
-            {this.renderTable(dashboards)}
-          </div>
+      <>
+        <div className="dashboard-listing-container">
+          <HeadingText type={HeadingText.TYPE.HEADING_2}>
+            Dashboard Listings
+          </HeadingText>
+          <HeadingText
+            className="sub-heading_date"
+            type={HeadingText.TYPE.HEADING_5}
+          >
+            {formatRelativeDate(timeRange)}
+          </HeadingText>
+          {loading && <Spinner />}
+          {!loading && (
+            <div className="dashboard-listing-table">
+              {this.renderTable(dashboards)}
+            </div>
+          )}
+        </div>
+        {!restoreModalHidden && restoreModalMounted && (
+          <RestoreDashboardModal
+            hidden={this.state.restoreModalHidden}
+            onClose={this.handleCloseRestoreModal}
+            onHideEnd={this.handleHideRestoreModal}
+            dashboard={selectedDashboard}
+          />
         )}
-      </div>
+      </>
     )
   }
 }
