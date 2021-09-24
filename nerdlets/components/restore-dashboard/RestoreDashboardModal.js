@@ -9,6 +9,7 @@ import {
   Icon,
   Toast,
 } from 'nr1'
+import { openDashboard } from '../../common/utils/navigation'
 export default class RestoreDashboardModal extends Component {
   state = {
     mutating: false,
@@ -36,7 +37,7 @@ export default class RestoreDashboardModal extends Component {
             actions: [
               {
                 label: 'View',
-                onClick: () => console.info('clicked view dashboard'),
+                onClick: () => openDashboard(dashboard.dashboardGuid),
               },
             ],
           })

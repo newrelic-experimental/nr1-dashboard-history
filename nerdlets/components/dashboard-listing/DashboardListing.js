@@ -19,6 +19,7 @@ import {
   entityByDomainTypeQuery,
   accountsQuery,
 } from '../../common/utils/query'
+import { openDashboard } from '../../common/utils/navigation'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
 export default class DashboardListing extends React.PureComponent {
   emptyState = {
@@ -130,7 +131,6 @@ export default class DashboardListing extends React.PureComponent {
       selectedDashboard: dashboard,
     })
   handleCloseRestoreModal = (evt, dashboard) => {
-    console.info('onClose', dashboard)
     if (dashboard) {
       const { dashboards } = this.state
       const restored = dashboards[dashboard.dashboardGuid]
@@ -221,16 +221,18 @@ export default class DashboardListing extends React.PureComponent {
             {item.deletedOn && formatDate(item.deletedOn)}
           </TableRowCell>
           <TableRowCell>
-            {item.deletedBy && (
-              <div className="button-row">
-                <Button
-                  sizeType={Button.SIZE_TYPE.SMALL}
-                  onClick={() => this.handleClickRestore(item)}
-                >
-                  Restore
-                </Button>
-              </div>
-            )}
+            <div className="button-row">
+              <Button
+                sizeType={Button.SIZE_TYPE.SMALL}
+                onClick={() =>
+                  item.deletedBy
+                    ? this.handleClickRestore(item)
+                    : openDashboard(item.dashboardGuid, this.props.timeRange)
+                }
+              >
+                {item.deletedBy ? 'Restore' : 'View'}
+              </Button>
+            </div>
           </TableRowCell>
         </TableRow>
       )}
