@@ -2,6 +2,8 @@ import dayjs from 'dayjs'
 const relativeTime = require('dayjs/plugin/relativeTime')
 
 export const getSinceClause = timeRange => {
+  if (!timeRange) return { since: ' SINCE 7 DAYS AGO ' }
+
   const { begin_time, end_time, duration } = timeRange
   let clauses = { timeRange }
 
@@ -11,7 +13,7 @@ export const getSinceClause = timeRange => {
   } else if (begin_time && end_time) {
     clauses.since = ` SINCE ${begin_time} UNTIL ${end_time} `
   } else {
-    clauses.since = ' SINCE 60 MINUTES AGO '
+    clauses.since = ' SINCE 7 DAYS AGO '
   }
 
   return clauses
@@ -22,6 +24,8 @@ export const formatDate = (date, pattern = 'MMM D, YYYY HH:mm:ss') => {
 }
 
 export const formatRelativeDate = timeRange => {
+  if (!timeRange) return 'Since 7 days ago'
+
   const { begin_time, end_time, duration } = timeRange
 
   if (duration) {
