@@ -23,7 +23,7 @@ import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
 export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
-    dashboards: [],
+    dashboards: {},
     column: 0,
     sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
     restoreModalHidden: true,
@@ -129,11 +129,20 @@ export default class DashboardListing extends React.PureComponent {
       restoreModalMounted: true,
       selectedDashboard: dashboard,
     })
-  handleCloseRestoreModal = () =>
+  handleCloseRestoreModal = (evt, dashboard) => {
+    console.info('onClose', dashboard)
+    if (dashboard) {
+      const { dashboards } = this.state
+      const restored = dashboards[dashboard.dashboardGuid]
+      restored.deletedOn = null
+      restored.deletedBy = null
+    }
+
     this.setState({
       restoreModalHidden: true,
       selectedDashboard: null,
     })
+  }
   handleHideRestoreModal = () => this.setState({ restoreModalMounted: false })
 
   handleTableSort(column, evt, { nextSortingType }) {
