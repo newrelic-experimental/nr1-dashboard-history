@@ -14,6 +14,7 @@ import {
   getSinceClause,
   formatDate,
   formatRelativeDate,
+  sameTimeRanges,
 } from '../../common/utils/date'
 import {
   nerdgraphNrqlQuery,
@@ -40,6 +41,24 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   componentDidMount() {
+    this.loadData()
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (!this.state.loading) {
+      if (
+        // there's a bug with the dashboard overlay that causes the timepicker to be reset to be null
+        // the timepicker should never be null (there should always be a default), so ignore this behaviour for now
+        prevProps.timeRange &&
+        this.props.timeRange &&
+        !sameTimeRanges(prevProps.timeRange, this.props.timeRange)
+      ) {
+        this.setState({ ...this.emptyState }, this.loadData())
+      }
+    }
+  }
+
+  loadData = () => {
     this.loadActiveDashboards(null, {}).then(dashboards =>
       this.loadDeletedDashboards(dashboards)
     )

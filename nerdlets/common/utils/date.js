@@ -40,3 +40,16 @@ export const formatRelativeDate = timeRange => {
     return 'Since 60 minutes ago'
   }
 }
+
+export const sameTimeRanges = (rangeA, rangeB) => {
+  // console.info('rangeA', rangeA, 'rangeB', rangeB)
+  let equals = true
+  if (
+    rangeA.begin_time !== rangeB.begin_time ||
+    rangeA.end_time !== rangeB.end_time ||
+    rangeA.duration !== rangeB.duration
+  ) {
+    equals = false
+  }
+  return equals
+}
