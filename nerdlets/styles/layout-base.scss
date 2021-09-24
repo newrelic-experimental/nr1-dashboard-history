@@ -23,6 +23,10 @@
 
 .button-row {
   display: flex;
+
+  button {
+    margin-right: 0.5rem;
+  }
 }
 
 .empty-state {

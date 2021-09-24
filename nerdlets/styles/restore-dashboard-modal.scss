@@ -1,0 +1,20 @@
+.modal-container {
+  display: flex;
+  flex-direction: column;
+
+  .modal-text-container {
+    padding: 2rem 0;
+
+    .modal-text {
+      font-size: 14px;
+      padding-bottom: $default-padding;
+    }
+
+    .modal-text + .modal-text {
+      padding-bottom: 0;
+    }
+  }
+
+  .modal-button-row {
+  }
+}
