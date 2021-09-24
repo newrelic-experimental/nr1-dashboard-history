@@ -14,7 +14,38 @@
       padding-bottom: 0;
     }
   }
+}
 
-  .modal-button-row {
+.modal-errors-container {
+  @include defaultBorderedPanel;
+
+  margin-bottom: 2rem;
+  max-height: 15rem;
+  overflow-y: scroll;
+
+  .modal-errors-header-container {
+    padding-bottom: $default-padding;
+  }
+
+  .modal-errors-icon {
+    padding-right: 1.25rem;
+  }
+
+  .modal-errors-header {
+    display: flex;
+    align-items: center;
+    padding-bottom: 0.25rem;
+
+    > p {
+      font-size: 14px;
+    }
+  }
+
+  .modal-errors-list {
+    padding-left: $default-padding;
+
+    > ul {
+      padding-bottom: 0.25rem;
+    }
   }
 }
