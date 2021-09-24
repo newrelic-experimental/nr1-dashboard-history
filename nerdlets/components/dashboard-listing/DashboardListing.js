@@ -8,6 +8,7 @@ import {
   TableRow,
   TableRowCell,
   Button,
+  Checkbox,
 } from 'nr1'
 import {
   getSinceClause,
@@ -25,11 +26,13 @@ export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
     dashboards: {},
+    deletedDashboards: {},
     column: 0,
     sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
     restoreModalHidden: true,
     restoreModalMounted: false,
     selectedDashboard: null,
+    showDeletedOnly: false,
   }
 
   state = {
@@ -118,8 +121,12 @@ export default class DashboardListing extends React.PureComponent {
       })
     )
       .then(results => {
-        results.forEach(result => (dashboards = { ...dashboards, ...result }))
-        this.setState({ loading: false, dashboards: dashboards })
+        let deletedDashboards = {}
+        results.forEach(result => {
+          dashboards = { ...dashboards, ...result }
+          deletedDashboards = { ...deletedDashboards, ...result }
+        })
+        this.setState({ loading: false, dashboards, deletedDashboards })
       })
       .catch(error => console.error('error loading dashboard names', error))
   }
@@ -132,10 +139,11 @@ export default class DashboardListing extends React.PureComponent {
     })
   handleCloseRestoreModal = (evt, dashboard) => {
     if (dashboard) {
-      const { dashboards } = this.state
+      const { dashboards, deletedDashboards } = this.state
       const restored = dashboards[dashboard.dashboardGuid]
       restored.deletedOn = null
       restored.deletedBy = null
+      delete deletedDashboards[dashboard.dashboardGuid]
     }
 
     this.setState({
@@ -156,93 +164,100 @@ export default class DashboardListing extends React.PureComponent {
     }
   }
 
-  renderTable = data => (
-    <Table items={Object.values(data)}>
-      <TableHeader>
-        <TableHeaderCell
-          sortable
-          sortingType={
-            this.state.column === 0
-              ? this.state.sortingType
-              : TableHeaderCell.SORTING_TYPE.NONE
-          }
-          onClick={this.handleTableSort.bind(this, 0)}
-          value={({ item }) => item.dashboardName}
-          width="2fr"
-        >
-          Dashboard Name
-        </TableHeaderCell>
-        <TableHeaderCell
-          sortable
-          sortingType={
-            this.state.column === 1
-              ? this.state.sortingType
-              : TableHeaderCell.SORTING_TYPE.NONE
-          }
-          onClick={this.handleTableSort.bind(this, 1)}
-          value={({ item }) => item.accountName}
-          width="1.5fr"
-        >
-          Account Name
-        </TableHeaderCell>
-        <TableHeaderCell
-          sortable
-          sortingType={
-            this.state.column === 2
-              ? this.state.sortingType
-              : TableHeaderCell.SORTING_TYPE.NONE
-          }
-          onClick={this.handleTableSort.bind(this, 2)}
-          value={({ item }) => item.deletedBy}
-          width="1.5fr"
-        >
-          Deleted By
-        </TableHeaderCell>
-        <TableHeaderCell
-          sortable
-          sortingType={
-            this.state.column === 3
-              ? this.state.sortingType
-              : TableHeaderCell.SORTING_TYPE.NONE
-          }
-          onClick={this.handleTableSort.bind(this, 3)}
-          value={({ item }) => item.deletedOn}
-        >
-          Deleted On
-        </TableHeaderCell>
-        <TableHeaderCell></TableHeaderCell>
-      </TableHeader>
-      {({ item }) => (
-        <TableRow>
-          <TableRowCell>{item.dashboardName}</TableRowCell>
-          <TableRowCell>{item.accountName}</TableRowCell>
-          <TableRowCell>{item.deletedBy}</TableRowCell>
-          <TableRowCell>
-            {item.deletedOn && formatDate(item.deletedOn)}
-          </TableRowCell>
-          <TableRowCell>
-            <div className="button-row">
-              <Button
-                sizeType={Button.SIZE_TYPE.SMALL}
-                onClick={() =>
-                  item.deletedBy
-                    ? this.handleClickRestore(item)
-                    : openDashboard(item.dashboardGuid, this.props.timeRange)
-                }
-              >
-                {item.deletedBy ? 'Restore' : 'View'}
-              </Button>
-            </div>
-          </TableRowCell>
-        </TableRow>
-      )}
-    </Table>
-  )
+  handleFilterDeleted = () =>
+    this.setState({ showDeletedOnly: !this.state.showDeletedOnly })
+
+  renderTable = () => {
+    const { dashboards, deletedDashboards, showDeletedOnly } = this.state
+    const data = showDeletedOnly ? deletedDashboards : dashboards
+
+    return (
+      <Table items={Object.values(data)}>
+        <TableHeader>
+          <TableHeaderCell
+            sortable
+            sortingType={
+              this.state.column === 0
+                ? this.state.sortingType
+                : TableHeaderCell.SORTING_TYPE.NONE
+            }
+            onClick={this.handleTableSort.bind(this, 0)}
+            value={({ item }) => item.dashboardName}
+            width="2fr"
+          >
+            Dashboard Name
+          </TableHeaderCell>
+          <TableHeaderCell
+            sortable
+            sortingType={
+              this.state.column === 1
+                ? this.state.sortingType
+                : TableHeaderCell.SORTING_TYPE.NONE
+            }
+            onClick={this.handleTableSort.bind(this, 1)}
+            value={({ item }) => item.accountName}
+            width="1.5fr"
+          >
+            Account Name
+          </TableHeaderCell>
+          <TableHeaderCell
+            sortable
+            sortingType={
+              this.state.column === 2
+                ? this.state.sortingType
+                : TableHeaderCell.SORTING_TYPE.NONE
+            }
+            onClick={this.handleTableSort.bind(this, 2)}
+            value={({ item }) => item.deletedBy}
+            width="1.5fr"
+          >
+            Deleted By
+          </TableHeaderCell>
+          <TableHeaderCell
+            sortable
+            sortingType={
+              this.state.column === 3
+                ? this.state.sortingType
+                : TableHeaderCell.SORTING_TYPE.NONE
+            }
+            onClick={this.handleTableSort.bind(this, 3)}
+            value={({ item }) => item.deletedOn}
+          >
+            Deleted On
+          </TableHeaderCell>
+          <TableHeaderCell></TableHeaderCell>
+        </TableHeader>
+        {({ item }) => (
+          <TableRow>
+            <TableRowCell>{item.dashboardName}</TableRowCell>
+            <TableRowCell>{item.accountName}</TableRowCell>
+            <TableRowCell>{item.deletedBy}</TableRowCell>
+            <TableRowCell>
+              {item.deletedOn && formatDate(item.deletedOn)}
+            </TableRowCell>
+            <TableRowCell>
+              <div className="button-row">
+                <Button
+                  sizeType={Button.SIZE_TYPE.SMALL}
+                  onClick={() =>
+                    item.deletedBy
+                      ? this.handleClickRestore(item)
+                      : openDashboard(item.dashboardGuid, this.props.timeRange)
+                  }
+                >
+                  {item.deletedBy ? 'Restore' : 'View'}
+                </Button>
+              </div>
+            </TableRowCell>
+          </TableRow>
+        )}
+      </Table>
+    )
+  }
 
   render() {
     const {
       loading,
-      dashboards,
       restoreModalHidden,
       restoreModalMounted,
       selectedDashboard,
@@ -252,20 +267,28 @@ export default class DashboardListing extends React.PureComponent {
     return (
       <>
         <div className="dashboard-listing-container">
-          <HeadingText type={HeadingText.TYPE.HEADING_2}>
-            Dashboard Listings
-          </HeadingText>
-          <HeadingText
-            className="sub-heading_date"
-            type={HeadingText.TYPE.HEADING_5}
-          >
-            {formatRelativeDate(timeRange)}
-          </HeadingText>
+          <div className="dashboard-listing-top-section-container">
+            <div>
+              <HeadingText type={HeadingText.TYPE.HEADING_2}>
+                Dashboard Listings
+              </HeadingText>
+              <HeadingText
+                className="sub-heading_date"
+                type={HeadingText.TYPE.HEADING_5}
+              >
+                {formatRelativeDate(timeRange)}
+              </HeadingText>
+            </div>
+            <div className="dashboard-listing-filter-container">
+              <Checkbox
+                onChange={this.handleFilterDeleted}
+                label="Only Deleted Dashboards"
+              />
+            </div>
+          </div>
           {loading && <Spinner />}
           {!loading && (
-            <div className="dashboard-listing-table">
-              {this.renderTable(dashboards)}
-            </div>
+            <div className="dashboard-listing-table">{this.renderTable()}</div>
           )}
         </div>
         {!restoreModalHidden && restoreModalMounted && (
