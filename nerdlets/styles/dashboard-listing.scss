@@ -2,6 +2,12 @@
   @include defaultPanel;
   height: 100%;
 
+  .dashboard-listing-top-section-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+  }
+
   .dashboard-listing-table {
     @include defaultPanel;
     height: 100%;
