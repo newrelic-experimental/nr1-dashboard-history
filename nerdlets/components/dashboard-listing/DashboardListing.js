@@ -9,7 +9,9 @@ import {
   TableRowCell,
   Button,
   Checkbox,
+  TextField,
 } from 'nr1'
+import { startCase } from 'lodash'
 import {
   getSinceClause,
   formatDate,
@@ -23,6 +25,9 @@ import {
 } from '../../common/utils/query'
 import { openDashboard } from '../../common/utils/navigation'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
+import SearchResults from './SearchResults'
+
+const FILTERABLE_ATTRIBUTES = ['dashboardName', 'accountName', 'deletedBy']
 export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
@@ -34,6 +39,8 @@ export default class DashboardListing extends React.PureComponent {
     restoreModalMounted: false,
     selectedDashboard: null,
     showDeletedOnly: false,
+    searchAutoComplete: null,
+    activeFilter: {},
   }
 
   state = {
@@ -145,7 +152,11 @@ export default class DashboardListing extends React.PureComponent {
           dashboards = { ...dashboards, ...result }
           deletedDashboards = { ...deletedDashboards, ...result }
         })
-        this.setState({ loading: false, dashboards, deletedDashboards })
+        this.setState({
+          loading: false,
+          dashboards,
+          deletedDashboards,
+        })
       })
       .catch(error => console.error('error loading dashboard names', error))
   }
@@ -184,7 +195,44 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   handleFilterDeleted = () =>
-    this.setState({ showDeletedOnly: !this.state.showDeletedOnly })
+    this.setState({
+      showDeletedOnly: !this.state.showDeletedOnly,
+    })
+
+  handleSearchChange = ({ target: { value } }) => {
+    this.getSearchResults(value)
+  }
+  handleSearchFocus = ({ target: { value } }) => {
+    if (value) this.getSearchResults(value)
+  }
+  getSearchResults = value => {
+    const searchTerm = value.toLowerCase()
+    const { dashboards } = this.state
+    const matches = Object.values(dashboards).reduce((acc, dashboard) => {
+      FILTERABLE_ATTRIBUTES.forEach(attribute => {
+        if (dashboard[attribute]?.toLowerCase().includes(searchTerm)) {
+          const displayName = startCase(attribute)
+          const exists = acc[displayName]?.find(
+            item => item.displayValue === dashboard[attribute]
+          )
+          if (!exists) {
+            if (!acc[displayName]) acc[displayName] = []
+            acc[displayName].push({
+              displayValue: dashboard[attribute],
+              dashboardGuid: dashboard.dashboardGuid,
+            })
+          }
+        }
+      })
+      return acc
+    }, {})
+    console.info('search matches', matches)
+    this.setState({ searchAutoComplete: matches })
+  }
+  handleFilterSelect = value => {}
+  handleCloseSearchResults = () => {
+    this.setState({ searchAutoComplete: null })
+  }
 
   renderTable = () => {
     const { dashboards, deletedDashboards, showDeletedOnly } = this.state
@@ -280,6 +328,7 @@ export default class DashboardListing extends React.PureComponent {
       restoreModalHidden,
       restoreModalMounted,
       selectedDashboard,
+      searchAutoComplete,
     } = this.state
     const { timeRange } = this.props
 
@@ -299,6 +348,23 @@ export default class DashboardListing extends React.PureComponent {
               </HeadingText>
             </div>
             <div className="dashboard-listing-filter-container">
+              <div className="search-input">
+                <TextField
+                  className="search-input__text-field"
+                  type={TextField.TYPE.SEARCH}
+                  placeholder="Start typing to search for account, dashboard or user names"
+                  onChange={this.handleSearchChange}
+                  onFocus={this.handleSearchFocus}
+                  autoFocus={true}
+                />
+                {searchAutoComplete && (
+                  <SearchResults
+                    results={searchAutoComplete}
+                    closeOnClickOutside={this.handleCloseSearchResults}
+                    onSelectItem={this.handleFilterSelect}
+                  />
+                )}
+              </div>
               <Checkbox
                 onChange={this.handleFilterDeleted}
                 label="Only Deleted Dashboards"

@@ -6,10 +6,43 @@
     display: flex;
     justify-content: space-between;
     align-items: end;
+    padding-bottom: $default-padding;
+    border-bottom: $border;
+    box-shadow: $border-box-shadow;
+  }
+
+  .dashboard-listing-filter-container {
+    display: flex;
+    align-items: center;
+
+    .search-input {
+      position: relative;
+      padding-right: 1rem;
+
+      .search-input__text-field {
+        width: 25rem;
+      }
+
+      .search-autocomplete__drawer {
+        position: absolute;
+        max-height: 60vh;
+        top: 1.5rem;
+        width: 25rem;
+        padding: 0 0.5rem;
+        background-color: #fff;
+        border: 1px solid #d5d7d7;
+        box-shadow: 0 5px 5px -2px rgba(0, 0, 0, 0.15);
+        border-top: 0;
+        border-radius: 0 0 2px 2px;
+        overflow-y: scroll;
+        z-index: 10;
+      }
+    }
   }
 
   .dashboard-listing-table {
     @include defaultPanel;
     height: 100%;
+    padding-top: 0;
   }
 }
