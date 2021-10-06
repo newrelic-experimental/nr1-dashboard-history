@@ -21,6 +21,7 @@ import {
   entityByTypeQuery,
   accountsQuery,
 } from '../../common/utils/query'
+import { isEmpty } from '../../common/utils/objects'
 import { openDashboard, openHistory } from '../../common/utils/navigation'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
 export default class DashboardListing extends React.PureComponent {
@@ -65,7 +66,7 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   loadActiveDashboards = async (cursor, dashboards) => {
-    console.info('loading active dashboards')
+    console.info('loading active dashboards ...')
     const data = await entityByTypeQuery(cursor, 'DASHBOARD')
     return this.processActiveDashboards(data, dashboards)
   }
@@ -88,8 +89,7 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   loadDeletedDashboards = async dashboards => {
-    console.info('loading deleted dashboards')
-
+    console.info('  ... loading deleted dashboards ...')
     // get the accounts for this user
     const accounts = await accountsQuery()
 
@@ -110,42 +110,90 @@ export default class DashboardListing extends React.PureComponent {
           dash => !(dash.targetId in dashboards)
         )
 
-        // if any deleted are found, get their name mappings
-        if (deletedDashboards && deletedDashboards.length > 0) {
-          let targetGuids = ''
-          const deletedDetails = deletedDashboards.reduce(
-            (acc, deleted, idx) => {
-              if (!acc[deleted.targetId]) {
-                targetGuids +=
-                  idx === 0 ? `'${deleted.targetId}'` : `,'${deleted.targetId}'`
-                acc[deleted.targetId] = {
-                  deletedBy: deleted.actorEmail,
-                  deletedOn: new Date(deleted.timestamp),
-                }
-              }
-              return acc
-            },
-            {}
-          )
-
-          const nameMappingQuery = `FROM DashboardGuidNameMap SELECT account as 'accountId', accountName, dashboardGuid, dashboardName LIMIT MAX ${sinceClause} WHERE dashboardGuid IN (${targetGuids})`
-          const mappings = await nerdgraphNrqlQuery(id, nameMappingQuery)
-          const nameMappings = mappings.reduce((acc, mapping) => {
-            acc[mapping.dashboardGuid] = {
-              dashboardGuid: mapping.dashboardGuid,
-              dashboardName: mapping.dashboardName,
-              accountId: mapping.accountId,
-              accountName: mapping.accountName,
-              ...deletedDetails[mapping.dashboardGuid],
-            }
-            return acc
-          }, {})
-          return nameMappings
-        }
-        return null
+        return deletedDashboards
       })
     )
       .then(results => {
+        let allDeletedDashboards = []
+        results.forEach(result => {
+          allDeletedDashboards = allDeletedDashboards.concat(result)
+        })
+        if (isEmpty(allDeletedDashboards)) {
+          console.info('    ... no deleted dashboards found')
+          this.setState({ loading: false, dashboards })
+        } else {
+          console.info('    ... loading deleted dashboard name-guid mappings')
+          this.loadNameMappings(
+            accounts,
+            dashboards,
+            allDeletedDashboards,
+            sinceClause
+          ) // pass everything onto the next step
+        }
+      })
+      .catch(error => {
+        console.error('error loading deleted dashboards', error)
+        this.setStatus({ loading: false })
+      })
+  }
+
+  /*
+   * We need to run the name mapping lookups in an account agnostic way - meaning that
+   * name mappings may be all written into an account scope that is different from the
+   * account where the delete event was recorded. If we scope the lookup to the account
+   * where the delete occurred, we will not pick up name-mappings that are aggregated into
+   * a single (e.g. parent) account scope.
+   *
+   * Why do we need to do this? In order to collect the name mappings, the user has to run a
+   * synthetic script. The user can choose to either manually set up all the account-key mappings
+   * and write the mappings into the same scope as the delete events; or they can use one
+   * key-account pairing to collect all the mappings into one account. For customers with a lot of
+   * accounts, this second configuration is simpler and easier to maintain, but it means we have to
+   * decouple the mapping lookup from account scope.
+   *
+   * If we ever record entity name into the NrAuditEvent table, all of this will be unnecessary.
+   */
+  loadNameMappings = async (
+    accounts,
+    dashboards,
+    allDeletedDashboards,
+    sinceClause
+  ) => {
+    // extract the guid clause and the deleted details for each deleted dashboard
+    let deletedGuidClause = ''
+    const deletedDetails = allDeletedDashboards.reduce((acc, deleted, idx) => {
+      if (!acc[deleted.targetId]) {
+        deletedGuidClause +=
+          idx === 0 ? `'${deleted.targetId}'` : `,'${deleted.targetId}'`
+        acc[deleted.targetId] = {
+          deletedBy: deleted.actorEmail,
+          deletedOn: new Date(deleted.timestamp),
+        }
+      }
+      return acc
+    }, {})
+
+    const nameMappingQuery = `FROM DashboardGuidNameMap SELECT latest(account) as 'accountId', latest(accountName) as 'accountName', latest(dashboardName) as 'dashboardName' LIMIT MAX ${sinceClause} WHERE dashboardGuid IN (${deletedGuidClause}) facet dashboardGuid`
+    Promise.all(
+      accounts.map(async ({ id }) => {
+        const mappings = await nerdgraphNrqlQuery(id, nameMappingQuery)
+        console.debug('mappings', id, mappings)
+        const nameMappings = mappings.reduce((acc, mapping) => {
+          acc[mapping.dashboardGuid] = {
+            dashboardGuid: mapping.dashboardGuid,
+            dashboardName: mapping.dashboardName,
+            accountId: mapping.accountId,
+            accountName: mapping.accountName,
+            ...deletedDetails[mapping.dashboardGuid],
+          }
+          return acc
+        }, {})
+
+        return nameMappings
+      })
+    )
+      .then(results => {
+        console.info('finished loading data')
         let deletedDashboards = {}
         results.forEach(result => {
           dashboards = { ...dashboards, ...result }
@@ -153,7 +201,10 @@ export default class DashboardListing extends React.PureComponent {
         })
         this.setState({ loading: false, dashboards, deletedDashboards })
       })
-      .catch(error => console.error('error loading dashboard names', error))
+      .catch(error => {
+        console.error('error loading dashboard names', error)
+        this.setStatus({ loading: false })
+      })
   }
 
   handleClickRestore = dashboard =>
