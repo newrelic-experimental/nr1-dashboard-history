@@ -28,23 +28,34 @@ export default class RestoreDashboardModal extends Component {
         }
       }`
 
-      const { errors } = await NerdGraphMutation.mutate({ mutation })
-      const cleanUp = () => {
-        if (!errors)
-          Toast.showToast({
-            title: `Restored Dashboard`,
-            description: `${dashboard.dashboardName} restored in account ${dashboard.accountName}`,
-            actions: [
-              {
-                label: 'View',
-                onClick: () => openDashboard(dashboard.dashboardGuid),
-              },
-            ],
-          })
-        onClose(null, dashboard)
-      }
+      const { errors } = await NerdGraphMutation.mutate({
+        mutation,
+      })
+      // just slow down our the very fast mutation response; this gives time for the restoration to show up
+      setTimeout(() => {
+        const cleanUp = () => {
+          if (!errors)
+            Toast.showToast({
+              title: `Restored Dashboard`,
+              description: `${dashboard.dashboardName} restored in account ${dashboard.accountName}`,
+              actions: [
+                {
+                  label: 'View',
+                  onClick: () => openDashboard(dashboard.dashboardGuid),
+                },
+              ],
+            })
+          onClose(null, dashboard)
+        }
 
-      this.setState({ mutating: false, mutationErrors: errors }, cleanUp())
+        this.setState(
+          {
+            mutating: false,
+            mutationErrors: errors,
+          },
+          cleanUp()
+        )
+      }, 2000)
     })
   }
 

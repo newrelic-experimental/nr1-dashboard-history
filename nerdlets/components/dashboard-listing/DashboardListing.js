@@ -18,10 +18,10 @@ import {
 } from '../../common/utils/date'
 import {
   nerdgraphNrqlQuery,
-  entityByDomainTypeQuery,
+  entityByTypeQuery,
   accountsQuery,
 } from '../../common/utils/query'
-import { openDashboard } from '../../common/utils/navigation'
+import { openDashboard, openHistory } from '../../common/utils/navigation'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
 export default class DashboardListing extends React.PureComponent {
   emptyState = {
@@ -65,17 +65,20 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   loadActiveDashboards = async (cursor, dashboards) => {
-    const data = await entityByDomainTypeQuery(cursor, 'VIZ', 'DASHBOARD')
+    console.info('loading active dashboards')
+    const data = await entityByTypeQuery(cursor, 'DASHBOARD')
     return this.processActiveDashboards(data, dashboards)
   }
 
   processActiveDashboards = async ({ entities, nextCursor }, dashboards) => {
     entities.reduce((acc, entity) => {
-      acc[entity.guid] = {
-        dashboardGuid: entity.guid,
-        dashboardName: entity.name,
-        accountId: entity.account.id,
-        accountName: entity.account.name,
+      if (entity.dashboardParentGuid === null) {
+        acc[entity.guid] = {
+          dashboardGuid: entity.guid,
+          dashboardName: entity.name,
+          accountId: entity.account.id,
+          accountName: entity.account.name,
+        }
       }
       return acc
     }, dashboards)
@@ -85,12 +88,13 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   loadDeletedDashboards = async dashboards => {
+    console.info('loading deleted dashboards')
+
     // get the accounts for this user
     const accounts = await accountsQuery()
 
     const sinceClause = getSinceClause(this.props.timeRange).since
     const deletedDashboardsQuery = `FROM NrAuditEvent SELECT targetId, actorEmail, timestamp WHERE actionIdentifier='dashboard.delete' LIMIT MAX ${sinceClause}`
-    let nameMappingQuery = `FROM DashboardGuidNameMap SELECT account as 'accountId', accountName, dashboardGuid, dashboardName LIMIT MAX ${sinceClause}`
 
     // for each account, get the list of deleted dashboards and their name mappings
     Promise.all(
@@ -111,18 +115,20 @@ export default class DashboardListing extends React.PureComponent {
           let targetGuids = ''
           const deletedDetails = deletedDashboards.reduce(
             (acc, deleted, idx) => {
-              targetGuids +=
-                idx === 0 ? `'${deleted.targetId}'` : `,'${deleted.targetId}'`
-              acc[deleted.targetId] = {
-                deletedBy: deleted.actorEmail,
-                deletedOn: new Date(deleted.timestamp),
+              if (!acc[deleted.targetId]) {
+                targetGuids +=
+                  idx === 0 ? `'${deleted.targetId}'` : `,'${deleted.targetId}'`
+                acc[deleted.targetId] = {
+                  deletedBy: deleted.actorEmail,
+                  deletedOn: new Date(deleted.timestamp),
+                }
               }
               return acc
             },
             {}
           )
 
-          nameMappingQuery += ` WHERE dashboardGuid IN (${targetGuids})`
+          const nameMappingQuery = `FROM DashboardGuidNameMap SELECT account as 'accountId', accountName, dashboardGuid, dashboardName LIMIT MAX ${sinceClause} WHERE dashboardGuid IN (${targetGuids})`
           const mappings = await nerdgraphNrqlQuery(id, nameMappingQuery)
           const nameMappings = mappings.reduce((acc, mapping) => {
             acc[mapping.dashboardGuid] = {
@@ -261,10 +267,16 @@ export default class DashboardListing extends React.PureComponent {
                   onClick={() =>
                     item.deletedBy
                       ? this.handleClickRestore(item)
-                      : openDashboard(item.dashboardGuid, this.props.timeRange)
+                      : openDashboard(item.dashboardGuid)
                   }
                 >
                   {item.deletedBy ? 'Restore' : 'View'}
+                </Button>
+                <Button
+                  sizeType={Button.SIZE_TYPE.SMALL}
+                  onClick={() => openHistory(item)}
+                >
+                  History
                 </Button>
               </div>
             </TableRowCell>
@@ -285,8 +297,8 @@ export default class DashboardListing extends React.PureComponent {
 
     return (
       <>
-        <div className="dashboard-listing-container">
-          <div className="dashboard-listing-top-section-container">
+        <div className="base-container">
+          <div className="base-container-top-section">
             <div>
               <HeadingText type={HeadingText.TYPE.HEADING_2}>
                 Dashboard Listings
@@ -306,9 +318,7 @@ export default class DashboardListing extends React.PureComponent {
             </div>
           </div>
           {loading && <Spinner />}
-          {!loading && (
-            <div className="dashboard-listing-table">{this.renderTable()}</div>
-          )}
+          {!loading && <div className="base-table">{this.renderTable()}</div>}
         </div>
         {!restoreModalHidden && restoreModalMounted && (
           <RestoreDashboardModal

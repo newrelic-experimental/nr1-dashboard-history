@@ -1,0 +1,6 @@
+{
+  "schemaType": "NERDLET",
+  "id": "dashboard-change-history",
+  "displayName": "Dashboard Change History",
+  "description": "View the change history for a specific dashboard"
+}
