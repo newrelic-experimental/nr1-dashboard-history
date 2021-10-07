@@ -130,8 +130,9 @@ export default class ViewHistory extends React.Component {
                 Since 13 months ago (max available data)
               </HeadingText>
             </div>
-            <div className="button-row">
-              <Button
+            {!dashboard.deletedBy && (
+              <div className="button-row">
+                {/* <Button
                 type={Button.TYPE.PRIMARY}
                 onClick={() =>
                   dashboard.deletedBy
@@ -140,8 +141,15 @@ export default class ViewHistory extends React.Component {
                 }
               >
                 {dashboard.deletedBy ? 'Restore' : 'View'}
-              </Button>
-            </div>
+              </Button> */}
+                <Button
+                  type={Button.TYPE.PRIMARY}
+                  onClick={() => openDashboard(dashboard.dashboardGuid)}
+                >
+                  View
+                </Button>
+              </div>
+            )}
           </div>
           <div className="base-container">
             {allEventsData.length > 0 ? (
