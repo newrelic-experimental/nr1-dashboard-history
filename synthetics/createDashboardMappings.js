@@ -18,6 +18,11 @@ const constants = {
    * The set of target accounts is defined by the ACCOUNT mappings; however, this USER key must have access to all accounts listed in the ACCOUNTS mapping.
    */
   READ_KEY: '',
+  NR_MAX_PAYLOAD_SIZE: 1000 * 1024,
+}
+
+const accountQueryExtractor = body => {
+  return body.data.actor.accounts
 }
 
 const entityQueryExtractor = body => {
@@ -61,6 +66,9 @@ const dashboardEntityQuery = `query dashboardEntityQuery($cursor:String,$query:S
             }
             guid
             name
+            ... on DashboardEntityOutline {
+              dashboardParentGuid
+            }
           }
           nextCursor
         }
@@ -84,13 +92,27 @@ const nextStep = transformed => {
     : storeNamedDashboards(transformed)
 }
 
+const payloadSizeIsOk = (current, addition) =>
+  JSON.stringify(current).length + JSON.stringify(addition).length <
+  constants.NR_MAX_PAYLOAD_SIZE
+
 const getNamedDashboards = ({ account, cursor, dashboardMappings }) => {
+  console.info(`${account.id}: reading current dashboards... cursor: ${cursor}`)
   const query = `type in ('DASHBOARD') and accountId=${account.id}`
 
   const entityToEventTransformer = results => {
-    dashboardMappings = dashboardMappings.concat(
-      results.entities.map(entity => nameMappingEventBuilder(entity))
-    )
+    results.entities.forEach(entity => {
+      if (entity.dashboardParentGuid === null) {
+        const event = nameMappingEventBuilder(entity)
+        const activeItem = dashboardMappings[dashboardMappings.length - 1]
+
+        if (payloadSizeIsOk(activeItem, event)) {
+          activeItem.push(event)
+        } else {
+          dashboardMappings.push([event])
+        }
+      }
+    })
     return { account, cursor: results.nextCursor, dashboardMappings }
   }
 
@@ -107,19 +129,43 @@ const getNamedDashboards = ({ account, cursor, dashboardMappings }) => {
 // 2. Create a custom event to associate the dashboard name to the guid
 // ######
 
+const getPostOptions = (payload, postOptions) => {
+  let options = { ...postOptions }
+  options['body'] = payload
+  return options
+}
+
 const storeNamedDashboards = ({ account, dashboardMappings }) => {
-  const requestOptions = {
+  console.info('posting dashboard mappings to account', account.id)
+
+  const postOptions = {
     uri: `https://insights-collector.newrelic.com/v1/accounts/${account.id}/events`,
     headers: { 'X-Insert-Key': account.key },
     json: true,
-    body: dashboardMappings,
   }
 
   if (dashboardMappings.length > 0) {
-    $http.post(requestOptions, (error, response, body) => {
-      if (!error && response.statusCode == 200)
-        console.log(`Posted ${dashboardMappings.length} dashboard mappings`)
-      else console.log(`Error posting to insights: ${error ? error : body}`)
+    console.info(
+      `${account.id}: total dashboardMappings payload batches ${dashboardMappings.length}`
+    )
+    dashboardMappings.forEach(mapping => {
+      console.info('payload batch total events', mapping.length)
+
+      $http.post(
+        getPostOptions(mapping, postOptions),
+        (error, response, body) => {
+          if (!error && response.statusCode == 200)
+            console.log(
+              `Posted ${mapping.length} dashboard mapping events to account ${account.id}`
+            )
+          else {
+            console.log(`Error posting to insights`)
+            console.error('error', error)
+            console.info('response status code', response.statusCode)
+            console.info('body', body)
+          }
+        }
+      )
     })
   }
 }
@@ -127,6 +173,7 @@ const storeNamedDashboards = ({ account, dashboardMappings }) => {
 // ######
 // Run the mapping functions for each required account
 // ######
+
 constants.ACCOUNTS.forEach(account =>
-  getNamedDashboards({ account, cursor: undefined, dashboardMappings: [] })
+  getNamedDashboards({ account, cursor: undefined, dashboardMappings: [[]] })
 )
