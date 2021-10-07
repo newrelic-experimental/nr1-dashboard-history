@@ -9,7 +9,7 @@ import {
 } from 'nr1'
 import DashboardListing from '../components/dashboard-listing/DashboardListing'
 
-export default class Wrapper extends React.Component {
+export default class Wrapper extends React.PureComponent {
   componentDidMount() {
     nerdlet.setConfig({
       accountPicker: true,

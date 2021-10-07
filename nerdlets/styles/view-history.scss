@@ -6,5 +6,6 @@
 
   .history-chart-container {
     @include defaultPanel;
+    max-height: 50rem;
   }
 }
