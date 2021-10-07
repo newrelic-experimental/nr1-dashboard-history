@@ -22,6 +22,7 @@ const constants = {
   /* The New Relic USER key. This will define the accessible scope of data.
    */
   READ_KEY: '',
+  NR_MAX_PAYLOAD_SIZE: 1000 * 1024,
 }
 
 const accountQueryExtractor = body => {
@@ -50,7 +51,12 @@ const read = (
     // console.info('response body for query ', variables.query, JSON.stringify(body))
     if (!error && response.statusCode == 200) {
       callback(resultsTransformer(resultsExtractor(body)))
-    } else console.error(`An error occurred: ${error ? error : body}`)
+    } else
+      console.error(
+        `An error occurred: ${
+          error ? JSON.stringify(error) : JSON.stringify(body)
+        }`
+      )
   })
 }
 
@@ -70,7 +76,7 @@ const accountQueryTransformer = accounts => {
   return {
     accounts: accounts.map(account => `'${account.id}'`).join(),
     cursor: undefined,
-    dashboardMappings: [],
+    dashboardMappings: [[]],
   }
 }
 const getAccounts = () =>
@@ -97,6 +103,9 @@ const dashboardEntityQuery = `query dashboardEntityQuery($cursor:String,$query:S
             }
             guid
             name
+            ... on DashboardEntityOutline {
+              dashboardParentGuid
+            }
           }
           nextCursor
         }
@@ -120,14 +129,27 @@ const nextStep = transformed => {
     : storeNamedDashboards(transformed)
 }
 
+const payloadSizeIsOk = (current, addition) =>
+  JSON.stringify(current).length + JSON.stringify(addition).length <
+  constants.NR_MAX_PAYLOAD_SIZE
+
 const getNamedDashboards = ({ accounts, cursor, dashboardMappings }) => {
-  console.info('reading current dashboards...')
+  console.info('reading current dashboards...', cursor)
   const query = `type in ('DASHBOARD') and accountId IN (${accounts})`
 
   const entityToEventTransformer = results => {
-    dashboardMappings = dashboardMappings.concat(
-      results.entities.map(entity => nameMappingEventBuilder(entity))
-    )
+    results.entities.forEach(entity => {
+      if (entity.dashboardParentGuid === null) {
+        const event = nameMappingEventBuilder(entity)
+        const activeItem = dashboardMappings[dashboardMappings.length - 1]
+
+        if (payloadSizeIsOk(activeItem, event)) {
+          activeItem.push(event)
+        } else {
+          dashboardMappings.push([event])
+        }
+      }
+    })
     return { accounts, cursor: results.nextCursor, dashboardMappings }
   }
 
@@ -144,24 +166,38 @@ const getNamedDashboards = ({ accounts, cursor, dashboardMappings }) => {
 // 3. Create a custom event to associate the dashboard name to the guid
 // ######
 
+const postOptions = {
+  uri: `https://insights-collector.newrelic.com/v1/accounts/${constants.PARENT_ACCOUNT.id}/events`,
+  headers: { 'X-Insert-Key': constants.PARENT_ACCOUNT.key },
+  json: true,
+}
+
+const getPostOptions = payload => {
+  let options = { ...postOptions }
+  options['body'] = payload
+  return options
+}
+
 const storeNamedDashboards = ({ dashboardMappings }) => {
   console.info('posting dashboard mappings')
-  const requestOptions = {
-    uri: `https://insights-collector.newrelic.com/v1/accounts/${constants.PARENT_ACCOUNT.id}/events`,
-    headers: { 'X-Insert-Key': constants.PARENT_ACCOUNT.key },
-    json: true,
-    body: dashboardMappings,
-  }
   if (dashboardMappings.length > 0) {
-    $http.post(requestOptions, (error, response, body) => {
-      if (!error && response.statusCode == 200)
-        console.log(`Posted ${dashboardMappings.length} dashboard mappings`)
-      else {
-        console.log(`Error posting to insights`)
-        console.error('error', error)
-        console.info('response status code', response.statusCode)
-        console.info('body', body)
-      }
+    console.info(
+      'total dashboardMappings payload batches',
+      dashboardMappings.length
+    )
+    dashboardMappings.forEach(mapping => {
+      console.info('payload batch total events', mapping.length)
+
+      $http.post(getPostOptions(mapping), (error, response, body) => {
+        if (!error && response.statusCode == 200)
+          console.log(`Posted ${mapping.length} dashboard mapping events`)
+        else {
+          console.log(`Error posting to insights`)
+          console.error('error', error)
+          console.info('response status code', response.statusCode)
+          console.info('body', body)
+        }
+      })
     })
   }
 }
