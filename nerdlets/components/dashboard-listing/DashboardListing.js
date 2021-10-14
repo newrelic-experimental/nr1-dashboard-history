@@ -203,6 +203,9 @@ export default class DashboardListing extends React.PureComponent {
       })
   }
 
+  handleRefreshData = () =>
+    this.setState({ ...this.emptyState }, () => this.loadData())
+
   handleClickRestore = dashboard =>
     this.setState({
       restoreModalHidden: false,
@@ -347,9 +350,15 @@ export default class DashboardListing extends React.PureComponent {
         <div className="base-container">
           <div className="base-container-top-section">
             <div>
-              <HeadingText type={HeadingText.TYPE.HEADING_2}>
-                Dashboard Listings
-              </HeadingText>
+              <div className="dashboard-listing-main-header">
+                <HeadingText type={HeadingText.TYPE.HEADING_2}>
+                  Dashboard Listings
+                </HeadingText>
+                <Button
+                  iconType={Button.ICON_TYPE.INTERFACE__OPERATIONS__REFRESH}
+                  onClick={() => this.handleRefreshData()}
+                />
+              </div>
               <HeadingText
                 className="sub-heading_date"
                 type={HeadingText.TYPE.HEADING_5}

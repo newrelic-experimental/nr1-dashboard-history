@@ -116,7 +116,11 @@ export default class RestoreDashboardModal extends Component {
             <Button onClick={onClose} disabled={mutating}>
               Cancel
             </Button>
-            <Button onClick={this.handleRestore} loading={mutating}>
+            <Button
+              onClick={this.handleRestore}
+              loading={mutating}
+              type={Button.TYPE.PRIMARY}
+            >
               Continue
             </Button>
           </div>
