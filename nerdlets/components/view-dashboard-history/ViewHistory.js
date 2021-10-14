@@ -51,7 +51,7 @@ export default class ViewHistory extends React.Component {
 
   loadData = async () => {
     const { since } = this.state
-    const { dashboard, pages } = this.props
+    const { dashboard } = this.props
     console.info(
       'loading dashboard',
       dashboard.dashboardName,
@@ -153,7 +153,7 @@ export default class ViewHistory extends React.Component {
   }
 
   render() {
-    const { dashboard, pages } = this.props
+    const { dashboard } = this.props
     const {
       loading,
       allEventsData,
