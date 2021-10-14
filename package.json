@@ -13,7 +13,8 @@
     "dayjs": "^1.10.7",
     "prop-types": "^15.6.2",
     "react": "^16.6.3",
-    "react-dom": "^16.6.3"
+    "react-dom": "^16.6.3",
+    "react-google-charts": "^3.0.15"
   },
   "browserslist": [
     "last 2 versions",
