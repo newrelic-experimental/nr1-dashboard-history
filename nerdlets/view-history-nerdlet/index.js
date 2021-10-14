@@ -19,7 +19,10 @@ export default class Wrapper extends React.PureComponent {
                 >
                   <Layout fullHeight={true}>
                     <LayoutItem type={LayoutItem.TYPE.MAIN}>
-                      <ViewHistory dashboard={nerdletUrlState.dashboard} />
+                      <ViewHistory
+                        dashboard={nerdletUrlState.dashboard}
+                        pages={nerdletUrlState.pages}
+                      />
                     </LayoutItem>
                   </Layout>
                 </div>

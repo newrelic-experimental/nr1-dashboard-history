@@ -19,9 +19,8 @@ export const getSinceClause = timeRange => {
   return clauses
 }
 
-export const formatDate = (date, pattern = 'MMM D, YYYY HH:mm:ss') => {
-  return dayjs(date).format(pattern)
-}
+export const formatDate = (date, pattern = 'MMM D, YYYY HH:mm:ss') =>
+  dayjs(date).format(pattern)
 
 export const formatRelativeDate = timeRange => {
   if (!timeRange) return 'Since 7 days ago'
@@ -42,7 +41,6 @@ export const formatRelativeDate = timeRange => {
 }
 
 export const sameTimeRanges = (rangeA, rangeB) => {
-  // console.info('rangeA', rangeA, 'rangeB', rangeB)
   let equals = true
   if (
     rangeA.begin_time !== rangeB.begin_time ||

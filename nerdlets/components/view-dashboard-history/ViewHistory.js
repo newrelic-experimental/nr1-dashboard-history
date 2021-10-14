@@ -12,12 +12,13 @@ import {
   Spinner,
   Button,
   NerdGraphQuery,
-  AreaChart,
 } from 'nr1'
 import { formatDate } from '../../common/utils/date'
 import { nerdgraphNrqlQuery } from '../../common/utils/query'
 import { openDashboard } from '../../common/utils/navigation'
+import { arrayToCommaDelimited } from '../../common/utils/objects'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
+import StackedBarChart from '../charts/StackedBarChart'
 
 export default class ViewHistory extends React.Component {
   state = {
@@ -41,14 +42,25 @@ export default class ViewHistory extends React.Component {
     }
   }
 
+  getGuidsClause = () => {
+    const { dashboard, pages } = this.props
+    return pages
+      ? `IN (${arrayToCommaDelimited([dashboard.dashboardGuid, ...pages])})`
+      : `= '${dashboard.dashboardGuid}'`
+  }
+
   loadData = async () => {
-    console.info('loading single dashboard event data')
     const { since } = this.state
-    const { dashboard } = this.props
+    const { dashboard, pages } = this.props
+    console.info(
+      'loading dashboard',
+      dashboard.dashboardName,
+      dashboard.dashboardGuid
+    )
 
     const data = await nerdgraphNrqlQuery(
       dashboard.accountId,
-      `SELECT timestamp, actionIdentifier, actorEmail FROM NrAuditEvent SINCE ${since} WHERE targetId = '${dashboard.dashboardGuid}' LIMIT MAX`,
+      `SELECT timestamp, actionIdentifier, actorEmail FROM NrAuditEvent SINCE ${since} WHERE targetId ${this.getGuidsClause()} LIMIT MAX`,
       NerdGraphQuery.FETCH_POLICY_TYPE.NO_CACHE
     )
 
@@ -104,8 +116,44 @@ export default class ViewHistory extends React.Component {
     )
   }
 
+  prepStackedBarData = data => {
+    const keys = {
+      keys: [],
+      addKey(key) {
+        if (!this.keys.includes(key)) this.keys.push(key)
+      },
+      mappedKeys: {
+        'dashboard.create': 'Create',
+        'dashboard.delete': 'Delete',
+        'dashboard.undelete': 'Undelete',
+        'dashboard.update': 'Update',
+        'dashboard.add_widgets': 'Add Widgets',
+        'dashboard.update_page': 'Update Page',
+      },
+    }
+    const buckets = data.reduce((acc, result) => {
+      const week = formatDate(result.beginTimeSeconds * 1000, 'MMM-DD')
+      const action = keys.mappedKeys[result.actionIdentifier]
+      keys.addKey(action)
+      if (acc[week]) {
+        if (acc[week][action]) {
+          const currTotal = acc[week][action]
+          acc[week][action] = currTotal + result.count
+        } else {
+          acc[week][action] = result.count
+        }
+      } else {
+        acc[week] = {
+          [action]: result.count,
+        }
+      }
+      return acc
+    }, {})
+    return { keys: keys.keys, buckets }
+  }
+
   render() {
-    const { dashboard } = this.props
+    const { dashboard, pages } = this.props
     const {
       loading,
       allEventsData,
@@ -115,6 +163,7 @@ export default class ViewHistory extends React.Component {
     } = this.state
 
     if (loading) return <Spinner />
+
     return (
       <>
         <div className="base-container">
@@ -155,12 +204,33 @@ export default class ViewHistory extends React.Component {
             {allEventsData.length > 0 ? (
               <div className="history-container">
                 <div className="history-chart-container">
-                  <AreaChart
-                    fullWidth
-                    style={{ height: '250rem' }}
-                    query={`SELECT count(*) FROM NrAuditEvent SINCE ${since} WHERE targetId = '${dashboard.dashboardGuid}' FACET actionIdentifier TIMESERIES LIMIT MAX`}
-                    accountId={dashboard.accountId}
-                  />
+                  <NerdGraphQuery
+                    query={`{
+                      actor {
+                        account(id: ${dashboard.accountId}) {
+                          nrql(query: "SELECT count(*) FROM NrAuditEvent SINCE ${since} WHERE targetId ${this.getGuidsClause()} FACET actionIdentifier TIMESERIES 1 WEEK") {
+                            results
+                          }
+                        }
+                      }
+                    }`}
+                    // fetchPolicyType={NerdGraphQuery.FETCH_POLICY_TYPE.NO_CACHE}
+                  >
+                    {({ loading, error, data }) => {
+                      if (loading) return <Spinner />
+
+                      if (error)
+                        console.error(
+                          'error loading dashboard event history',
+                          error
+                        )
+
+                      const { keys, buckets } = this.prepStackedBarData(
+                        data.actor.account.nrql.results
+                      )
+                      return <StackedBarChart keys={keys} data={buckets} />
+                    }}
+                  </NerdGraphQuery>
                 </div>
                 <div className="history-chart-container">
                   <div className="base-table">
@@ -196,4 +266,5 @@ export default class ViewHistory extends React.Component {
 
 ViewHistory.propTypes = {
   dashboard: PropTypes.object.isRequired,
+  pages: PropTypes.object,
 }
