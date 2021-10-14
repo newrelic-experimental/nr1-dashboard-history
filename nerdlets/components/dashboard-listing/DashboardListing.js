@@ -20,10 +20,11 @@ import {
 } from '../../common/utils/date'
 import {
   nerdgraphNrqlQuery,
-  entityByDomainTypeQuery,
+  entityByTypeQuery,
   accountsQuery,
 } from '../../common/utils/query'
-import { openDashboard } from '../../common/utils/navigation'
+import { isEmpty } from '../../common/utils/objects'
+import { openDashboard, openHistory } from '../../common/utils/navigation'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
 import SearchResults from './SearchResults'
 
@@ -32,6 +33,7 @@ export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
     dashboards: {},
+    pages: {},
     deletedDashboards: {},
     column: 0,
     sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
@@ -66,38 +68,50 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   loadData = () => {
-    this.loadActiveDashboards(null, {}).then(dashboards =>
-      this.loadDeletedDashboards(dashboards)
+    this.loadActiveDashboards(null, {}, {}).then(({ dashboards, pages }) =>
+      this.loadDeletedDashboards(dashboards, pages)
     )
   }
 
-  loadActiveDashboards = async (cursor, dashboards) => {
-    const data = await entityByDomainTypeQuery(cursor, 'VIZ', 'DASHBOARD')
-    return this.processActiveDashboards(data, dashboards)
+  loadActiveDashboards = async (cursor, dashboards, pages) => {
+    console.info('loading active dashboards ...')
+    const data = await entityByTypeQuery(cursor, 'DASHBOARD')
+    return this.processActiveDashboards(data, dashboards, pages)
   }
 
-  processActiveDashboards = async ({ entities, nextCursor }, dashboards) => {
+  processActiveDashboards = async (
+    { entities, nextCursor },
+    dashboards,
+    pages
+  ) => {
     entities.reduce((acc, entity) => {
-      acc[entity.guid] = {
-        dashboardGuid: entity.guid,
-        dashboardName: entity.name,
-        accountId: entity.account.id,
-        accountName: entity.account.name,
+      if (entity.dashboardParentGuid === null) {
+        acc[entity.guid] = {
+          dashboardGuid: entity.guid,
+          dashboardName: entity.name,
+          accountId: entity.account.id,
+          accountName: entity.account.name,
+        }
+      } else {
+        if (pages[entity.dashboardParentGuid])
+          pages[entity.dashboardParentGuid].push(entity.guid)
+        else pages[entity.dashboardParentGuid] = [entity.guid]
       }
       return acc
     }, dashboards)
 
-    if (nextCursor) await this.loadActiveDashboards(nextCursor, dashboards)
-    else return dashboards
+    if (nextCursor)
+      await this.loadActiveDashboards(nextCursor, dashboards, pages)
+    else return { dashboards, pages }
   }
 
-  loadDeletedDashboards = async dashboards => {
+  loadDeletedDashboards = async (dashboards, pages) => {
+    console.info('  ... loading deleted dashboards ...')
     // get the accounts for this user
     const accounts = await accountsQuery()
 
     const sinceClause = getSinceClause(this.props.timeRange).since
     const deletedDashboardsQuery = `FROM NrAuditEvent SELECT targetId, actorEmail, timestamp WHERE actionIdentifier='dashboard.delete' LIMIT MAX ${sinceClause}`
-    let nameMappingQuery = `FROM DashboardGuidNameMap SELECT account as 'accountId', accountName, dashboardGuid, dashboardName LIMIT MAX ${sinceClause}`
 
     // for each account, get the list of deleted dashboards and their name mappings
     Promise.all(
@@ -113,53 +127,91 @@ export default class DashboardListing extends React.PureComponent {
           dash => !(dash.targetId in dashboards)
         )
 
-        // if any deleted are found, get their name mappings
-        if (deletedDashboards && deletedDashboards.length > 0) {
-          let targetGuids = ''
-          const deletedDetails = deletedDashboards.reduce(
-            (acc, deleted, idx) => {
-              targetGuids +=
-                idx === 0 ? `'${deleted.targetId}'` : `,'${deleted.targetId}'`
-              acc[deleted.targetId] = {
-                deletedBy: deleted.actorEmail,
-                deletedOn: new Date(deleted.timestamp),
-              }
-              return acc
-            },
-            {}
-          )
-
-          nameMappingQuery += ` WHERE dashboardGuid IN (${targetGuids})`
-          const mappings = await nerdgraphNrqlQuery(id, nameMappingQuery)
-          const nameMappings = mappings.reduce((acc, mapping) => {
-            acc[mapping.dashboardGuid] = {
-              dashboardGuid: mapping.dashboardGuid,
-              dashboardName: mapping.dashboardName,
-              accountId: mapping.accountId,
-              accountName: mapping.accountName,
-              ...deletedDetails[mapping.dashboardGuid],
-            }
-            return acc
-          }, {})
-          return nameMappings
-        }
-        return null
+        return deletedDashboards
       })
     )
       .then(results => {
+        let allDeletedDashboards = []
+        results.forEach(result => {
+          allDeletedDashboards = allDeletedDashboards.concat(result)
+        })
+        if (isEmpty(allDeletedDashboards)) {
+          console.info('    ... no deleted dashboards found')
+          this.setState({ loading: false, dashboards, pages })
+        } else {
+          console.info('    ... loading deleted dashboard name-guid mappings')
+          this.loadNameMappings(
+            accounts,
+            dashboards,
+            pages,
+            allDeletedDashboards,
+            sinceClause
+          ) // pass everything onto the next step
+        }
+      })
+      .catch(error => {
+        console.error('error loading deleted dashboards', error)
+        this.setStatus({ loading: false })
+      })
+  }
+
+  loadNameMappings = async (
+    accounts,
+    dashboards,
+    pages,
+    allDeletedDashboards,
+    sinceClause
+  ) => {
+    // extract the guid clause and the deleted details for each deleted dashboard
+    let deletedGuidClause = ''
+    const deletedDetails = allDeletedDashboards.reduce((acc, deleted, idx) => {
+      if (!acc[deleted.targetId]) {
+        deletedGuidClause +=
+          idx === 0 ? `'${deleted.targetId}'` : `,'${deleted.targetId}'`
+        acc[deleted.targetId] = {
+          deletedBy: deleted.actorEmail,
+          deletedOn: new Date(deleted.timestamp),
+        }
+      }
+      return acc
+    }, {})
+
+    const nameMappingQuery = `FROM DashboardGuidNameMap SELECT latest(account) as 'accountId', latest(accountName) as 'accountName', latest(dashboardName) as 'dashboardName' LIMIT MAX ${sinceClause} WHERE dashboardGuid IN (${deletedGuidClause}) facet dashboardGuid`
+    Promise.all(
+      accounts.map(async ({ id }) => {
+        const mappings = await nerdgraphNrqlQuery(id, nameMappingQuery)
+        console.debug('mappings', id, mappings)
+        const nameMappings = mappings.reduce((acc, mapping) => {
+          acc[mapping.dashboardGuid] = {
+            dashboardGuid: mapping.dashboardGuid,
+            dashboardName: mapping.dashboardName,
+            accountId: mapping.accountId,
+            accountName: mapping.accountName,
+            ...deletedDetails[mapping.dashboardGuid],
+          }
+          return acc
+        }, {})
+
+        return nameMappings
+      })
+    )
+      .then(results => {
+        console.info('finished loading data')
         let deletedDashboards = {}
         results.forEach(result => {
           dashboards = { ...dashboards, ...result }
           deletedDashboards = { ...deletedDashboards, ...result }
         })
-        this.setState({
-          loading: false,
-          dashboards,
-          deletedDashboards,
-        })
+        this.setState({ loading: false, dashboards, pages, deletedDashboards })
       })
-      .catch(error => console.error('error loading dashboard names', error))
+      .catch(error => {
+        console.error('error loading dashboard names', error)
+        this.setStatus({ loading: false })
+      })
   }
+
+  handleRefreshData = () =>
+    this.setState({ ...this.emptyState }, () => this.loadData())
 
   handleClickRestore = dashboard =>
     this.setState({
@@ -235,7 +287,7 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   renderTable = () => {
-    const { dashboards, deletedDashboards, showDeletedOnly } = this.state
+    const { dashboards, pages, deletedDashboards, showDeletedOnly } = this.state
     const data = showDeletedOnly ? deletedDashboards : dashboards
 
     return (
@@ -309,10 +361,16 @@ export default class DashboardListing extends React.PureComponent {
                   onClick={() =>
                     item.deletedBy
                       ? this.handleClickRestore(item)
-                      : openDashboard(item.dashboardGuid, this.props.timeRange)
+                      : openDashboard(item.dashboardGuid)
                   }
                 >
                   {item.deletedBy ? 'Restore' : 'View'}
+                </Button>
+                <Button
+                  sizeType={Button.SIZE_TYPE.SMALL}
+                  onClick={() => openHistory(item, pages[item.dashboardGuid])}
+                >
+                  History
                 </Button>
               </div>
             </TableRowCell>
@@ -334,12 +392,18 @@ export default class DashboardListing extends React.PureComponent {
 
     return (
       <>
-        <div className="dashboard-listing-container">
-          <div className="dashboard-listing-top-section-container">
+        <div className="base-container">
+          <div className="base-container-top-section">
             <div>
-              <HeadingText type={HeadingText.TYPE.HEADING_2}>
-                Dashboard Listings
-              </HeadingText>
+              <div className="dashboard-listing-main-header">
+                <HeadingText type={HeadingText.TYPE.HEADING_2}>
+                  Dashboard Listings
+                </HeadingText>
+                <Button
+                  iconType={Button.ICON_TYPE.INTERFACE__OPERATIONS__REFRESH}
+                  onClick={() => this.handleRefreshData()}
+                />
+              </div>
               <HeadingText
                 className="sub-heading_date"
                 type={HeadingText.TYPE.HEADING_5}
@@ -372,9 +436,7 @@ export default class DashboardListing extends React.PureComponent {
             </div>
           </div>
           {loading && <Spinner />}
-          {!loading && (
-            <div className="dashboard-listing-table">{this.renderTable()}</div>
-          )}
+          {!loading && <div className="base-table">{this.renderTable()}</div>}
         </div>
         {!restoreModalHidden && restoreModalMounted && (
           <RestoreDashboardModal

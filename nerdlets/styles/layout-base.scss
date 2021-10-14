@@ -16,6 +16,22 @@
   box-sizing: border-box;
 }
 
+.base-container {
+  @include defaultPanel;
+  height: 100%;
+}
+
+.base-container-top-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+}
+
+.base-table {
+  @include defaultPanel;
+  height: 100%;
+}
+
 .sub-heading_date {
   padding-top: 0.25rem;
   color: $grey7;
