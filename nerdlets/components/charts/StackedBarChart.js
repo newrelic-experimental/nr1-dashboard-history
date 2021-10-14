@@ -27,9 +27,21 @@ export default class StackedBarChart extends React.PureComponent {
         data={[['Actions', ...keys], ...data]}
         options={{
           chartArea: { width: '90%', height: '80%' },
+          colors: [
+            '#9044b2',
+            '#f45632',
+            '#fdb819',
+            '#219880',
+            '#b20071',
+            '#3ec9ec',
+          ],
           isStacked: true,
           legend: { position: 'top' },
           fontName: 'Open Sans,Segoe UI,Tahoma,sans-serif',
+          fontSize: 12,
+          hAxis: {
+            title: 'Week of',
+          },
         }}
         // For tests
         rootProps={{ 'data-testid': '1' }}

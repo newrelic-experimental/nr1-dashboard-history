@@ -28,6 +28,7 @@ export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
     dashboards: {},
+    pages: {},
     deletedDashboards: {},
     column: 0,
     sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
@@ -60,18 +61,22 @@ export default class DashboardListing extends React.PureComponent {
   }
 
   loadData = () => {
-    this.loadActiveDashboards(null, {}).then(dashboards =>
-      this.loadDeletedDashboards(dashboards)
+    this.loadActiveDashboards(null, {}, {}).then(({ dashboards, pages }) =>
+      this.loadDeletedDashboards(dashboards, pages)
     )
   }
 
-  loadActiveDashboards = async (cursor, dashboards) => {
+  loadActiveDashboards = async (cursor, dashboards, pages) => {
     console.info('loading active dashboards ...')
     const data = await entityByTypeQuery(cursor, 'DASHBOARD')
-    return this.processActiveDashboards(data, dashboards)
+    return this.processActiveDashboards(data, dashboards, pages)
   }
 
-  processActiveDashboards = async ({ entities, nextCursor }, dashboards) => {
+  processActiveDashboards = async (
+    { entities, nextCursor },
+    dashboards,
+    pages
+  ) => {
     entities.reduce((acc, entity) => {
       if (entity.dashboardParentGuid === null) {
         acc[entity.guid] = {
@@ -80,15 +85,20 @@ export default class DashboardListing extends React.PureComponent {
           accountId: entity.account.id,
           accountName: entity.account.name,
         }
+      } else {
+        if (pages[entity.dashboardParentGuid])
+          pages[entity.dashboardParentGuid].push(entity.guid)
+        else pages[entity.dashboardParentGuid] = [entity.guid]
       }
       return acc
     }, dashboards)
 
-    if (nextCursor) await this.loadActiveDashboards(nextCursor, dashboards)
-    else return dashboards
+    if (nextCursor)
+      await this.loadActiveDashboards(nextCursor, dashboards, pages)
+    else return { dashboards, pages }
   }
 
-  loadDeletedDashboards = async dashboards => {
+  loadDeletedDashboards = async (dashboards, pages) => {
     console.info('  ... loading deleted dashboards ...')
     // get the accounts for this user
     const accounts = await accountsQuery()
@@ -120,12 +130,13 @@ export default class DashboardListing extends React.PureComponent {
         })
         if (isEmpty(allDeletedDashboards)) {
           console.info('    ... no deleted dashboards found')
-          this.setState({ loading: false, dashboards })
+          this.setState({ loading: false, dashboards, pages })
         } else {
           console.info('    ... loading deleted dashboard name-guid mappings')
           this.loadNameMappings(
             accounts,
             dashboards,
+            pages,
             allDeletedDashboards,
             sinceClause
           ) // pass everything onto the next step
@@ -137,25 +148,10 @@ export default class DashboardListing extends React.PureComponent {
       })
   }
 
-  /*
-   * We need to run the name mapping lookups in an account agnostic way - meaning that
-   * name mappings may be all written into an account scope that is different from the
-   * account where the delete event was recorded. If we scope the lookup to the account
-   * where the delete occurred, we will not pick up name-mappings that are aggregated into
-   * a single (e.g. parent) account scope.
-   *
-   * Why do we need to do this? In order to collect the name mappings, the user has to run a
-   * synthetic script. The user can choose to either manually set up all the account-key mappings
-   * and write the mappings into the same scope as the delete events; or they can use one
-   * key-account pairing to collect all the mappings into one account. For customers with a lot of
-   * accounts, this second configuration is simpler and easier to maintain, but it means we have to
-   * decouple the mapping lookup from account scope.
-   *
-   * If we ever record entity name into the NrAuditEvent table, all of this will be unnecessary.
-   */
   loadNameMappings = async (
     accounts,
     dashboards,
+    pages,
     allDeletedDashboards,
     sinceClause
   ) => {
@@ -199,7 +195,7 @@ export default class DashboardListing extends React.PureComponent {
           dashboards = { ...dashboards, ...result }
           deletedDashboards = { ...deletedDashboards, ...result }
         })
-        this.setState({ loading: false, dashboards, deletedDashboards })
+        this.setState({ loading: false, dashboards, pages, deletedDashboards })
       })
       .catch(error => {
         console.error('error loading dashboard names', error)
@@ -244,7 +240,7 @@ export default class DashboardListing extends React.PureComponent {
     this.setState({ showDeletedOnly: !this.state.showDeletedOnly })
 
   renderTable = () => {
-    const { dashboards, deletedDashboards, showDeletedOnly } = this.state
+    const { dashboards, pages, deletedDashboards, showDeletedOnly } = this.state
     const data = showDeletedOnly ? deletedDashboards : dashboards
 
     return (
@@ -325,7 +321,7 @@ export default class DashboardListing extends React.PureComponent {
                 </Button>
                 <Button
                   sizeType={Button.SIZE_TYPE.SMALL}
-                  onClick={() => openHistory(item)}
+                  onClick={() => openHistory(item, pages[item.dashboardGuid])}
                 >
                   History
                 </Button>

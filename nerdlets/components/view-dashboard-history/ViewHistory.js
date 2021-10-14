@@ -16,6 +16,7 @@ import {
 import { formatDate } from '../../common/utils/date'
 import { nerdgraphNrqlQuery } from '../../common/utils/query'
 import { openDashboard } from '../../common/utils/navigation'
+import { arrayToCommaDelimited } from '../../common/utils/objects'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
 import StackedBarChart from '../charts/StackedBarChart'
 
@@ -41,9 +42,16 @@ export default class ViewHistory extends React.Component {
     }
   }
 
+  getGuidsClause = () => {
+    const { dashboard, pages } = this.props
+    return pages
+      ? `IN (${arrayToCommaDelimited([dashboard.dashboardGuid, ...pages])})`
+      : `= '${dashboard.dashboardGuid}'`
+  }
+
   loadData = async () => {
     const { since } = this.state
-    const { dashboard } = this.props
+    const { dashboard, pages } = this.props
     console.info(
       'loading dashboard',
       dashboard.dashboardName,
@@ -52,7 +60,7 @@ export default class ViewHistory extends React.Component {
 
     const data = await nerdgraphNrqlQuery(
       dashboard.accountId,
-      `SELECT timestamp, actionIdentifier, actorEmail FROM NrAuditEvent SINCE ${since} WHERE targetId = '${dashboard.dashboardGuid}' LIMIT MAX`,
+      `SELECT timestamp, actionIdentifier, actorEmail FROM NrAuditEvent SINCE ${since} WHERE targetId ${this.getGuidsClause()} LIMIT MAX`,
       NerdGraphQuery.FETCH_POLICY_TYPE.NO_CACHE
     )
 
@@ -145,7 +153,7 @@ export default class ViewHistory extends React.Component {
   }
 
   render() {
-    const { dashboard } = this.props
+    const { dashboard, pages } = this.props
     const {
       loading,
       allEventsData,
@@ -155,6 +163,7 @@ export default class ViewHistory extends React.Component {
     } = this.state
 
     if (loading) return <Spinner />
+
     return (
       <>
         <div className="base-container">
@@ -199,7 +208,7 @@ export default class ViewHistory extends React.Component {
                     query={`{
                       actor {
                         account(id: ${dashboard.accountId}) {
-                          nrql(query: "SELECT count(*) FROM NrAuditEvent SINCE ${since} WHERE targetId = '${dashboard.dashboardGuid}' FACET actionIdentifier TIMESERIES 1 WEEK") {
+                          nrql(query: "SELECT count(*) FROM NrAuditEvent SINCE ${since} WHERE targetId ${this.getGuidsClause()} FACET actionIdentifier TIMESERIES 1 WEEK") {
                             results
                           }
                         }
@@ -257,4 +266,5 @@ export default class ViewHistory extends React.Component {
 
 ViewHistory.propTypes = {
   dashboard: PropTypes.object.isRequired,
+  pages: PropTypes.object,
 }
