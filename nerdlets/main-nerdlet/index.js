@@ -52,12 +52,8 @@ export default class Wrapper extends React.PureComponent {
           offset: 1000 * 60 * 60 * 24 * 30,
         },
         {
-          label: '1 year',
-          offset: 1000 * 60 * 60 * 24 * 365,
-        },
-        {
-          label: '2 years',
-          offset: 1000 * 60 * 60 * 24 * 365 * 2,
+          label: '13 months',
+          offset: 1000 * 60 * 60 * 24 * 395,
         },
         nerdlet.TIME_PICKER_RANGE.CUSTOM,
       ],

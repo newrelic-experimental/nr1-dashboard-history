@@ -31,7 +31,7 @@ export default class RestoreDashboardModal extends Component {
       const { errors } = await NerdGraphMutation.mutate({
         mutation,
       })
-      // just slow down our the very fast mutation response; this gives time for the restoration to show up
+      // just slow down the very fast mutation response; it's a better UX and gives time for the restoration to show up in the data
       setTimeout(() => {
         const cleanUp = () => {
           if (!errors)

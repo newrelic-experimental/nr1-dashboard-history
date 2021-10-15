@@ -1,0 +1,8 @@
+.search-result__item {
+  padding: 0.15rem 0;
+  padding-left: 1rem;
+  &:hover {
+    cursor: pointer;
+    background-color: $grey2;
+  }
+}
