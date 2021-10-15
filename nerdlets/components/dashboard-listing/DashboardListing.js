@@ -1,4 +1,5 @@
 import React from 'react'
+import PropTypes from 'prop-types'
 import {
   HeadingText,
   Spinner,
@@ -177,7 +178,6 @@ export default class DashboardListing extends React.PureComponent {
     Promise.all(
       accounts.map(async ({ id }) => {
         const mappings = await nerdgraphNrqlQuery(id, nameMappingQuery)
-        console.debug('mappings', id, mappings)
         const nameMappings = mappings.reduce((acc, mapping) => {
           acc[mapping.dashboardGuid] = {
             dashboardGuid: mapping.dashboardGuid,
@@ -477,4 +477,8 @@ export default class DashboardListing extends React.PureComponent {
       </>
     )
   }
+}
+
+DashboardListing.propTypes = {
+  timeRange: PropTypes.object,
 }
