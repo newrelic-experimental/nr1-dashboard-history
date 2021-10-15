@@ -1,4 +1,5 @@
-import React, { Component } from 'react'
+import React from 'react'
+import PropTypes from 'prop-types'
 
 import {
   Modal,
@@ -10,7 +11,7 @@ import {
   Toast,
 } from 'nr1'
 import { openDashboard } from '../../common/utils/navigation'
-export default class RestoreDashboardModal extends Component {
+export default class RestoreDashboardModal extends React.Component {
   state = {
     mutating: false,
     mutationErrors: null,
@@ -128,4 +129,11 @@ export default class RestoreDashboardModal extends Component {
       </Modal>
     )
   }
+}
+
+RestoreDashboardModal.propTypes = {
+  hidden: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onHideEnd: PropTypes.func.isRequired,
+  dashboard: PropTypes.object.isRequired,
 }
