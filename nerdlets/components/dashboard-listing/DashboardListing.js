@@ -27,14 +27,13 @@ import { isEmpty } from '../../common/utils/objects'
 import { openDashboard, openHistory } from '../../common/utils/navigation'
 import RestoreDashboardModal from '../restore-dashboard/RestoreDashboardModal'
 import SearchResults from './SearchResults'
-
-const FILTERABLE_ATTRIBUTES = ['dashboardName', 'accountName', 'deletedBy']
 export default class DashboardListing extends React.PureComponent {
   emptyState = {
     loading: true,
     dashboards: {},
     pages: {},
     deletedDashboards: {},
+    filteredDashboards: null,
     column: 0,
     sortingType: TableHeaderCell.SORTING_TYPE.ASCENDING,
     restoreModalHidden: true,
@@ -42,7 +41,7 @@ export default class DashboardListing extends React.PureComponent {
     selectedDashboard: null,
     showDeletedOnly: false,
     searchAutoComplete: null,
-    activeFilter: {},
+    searchValue: '',
   }
 
   state = {
@@ -56,8 +55,6 @@ export default class DashboardListing extends React.PureComponent {
   componentDidUpdate(prevProps, prevState) {
     if (!this.state.loading) {
       if (
-        // there's a bug with the dashboard overlay that causes the timepicker to be reset to be null
-        // the timepicker should never be null (there should always be a default), so ignore this behaviour for now
         prevProps.timeRange &&
         this.props.timeRange &&
         !sameTimeRanges(prevProps.timeRange, this.props.timeRange)
@@ -202,7 +199,12 @@ export default class DashboardListing extends React.PureComponent {
           dashboards = { ...dashboards, ...result }
           deletedDashboards = { ...deletedDashboards, ...result }
         })
-        this.setState({ loading: false, dashboards, pages, deletedDashboards })
+        this.setState({
+          loading: false,
+          dashboards,
+          pages,
+          deletedDashboards,
+        })
       })
       .catch(error => {
         console.error('error loading dashboard names', error)
@@ -251,44 +253,55 @@ export default class DashboardListing extends React.PureComponent {
       showDeletedOnly: !this.state.showDeletedOnly,
     })
 
+  getSearchResults = value => {
+    const searchTerm = value.toLowerCase()
+    const { dashboards } = this.state
+    const matches = Object.values(dashboards).reduce((acc, dashboard) => {
+      const name = dashboard.dashboardName
+      if (name.toLowerCase().includes(searchTerm)) {
+        if (!acc[name]) acc[name] = []
+        acc[name].push(dashboard.dashboardGuid)
+      }
+      return acc
+    }, {})
+    this.setState({ searchAutoComplete: matches })
+  }
   handleSearchChange = ({ target: { value } }) => {
     this.getSearchResults(value)
   }
   handleSearchFocus = ({ target: { value } }) => {
     if (value) this.getSearchResults(value)
   }
-  getSearchResults = value => {
-    const searchTerm = value.toLowerCase()
+  handleSearchSelect = (name, guids) => {
     const { dashboards } = this.state
-    const matches = Object.values(dashboards).reduce((acc, dashboard) => {
-      FILTERABLE_ATTRIBUTES.forEach(attribute => {
-        if (dashboard[attribute]?.toLowerCase().includes(searchTerm)) {
-          const displayName = startCase(attribute)
-          const exists = acc[displayName]?.find(
-            item => item.displayValue === dashboard[attribute]
-          )
-          if (!exists) {
-            if (!acc[displayName]) acc[displayName] = []
-            acc[displayName].push({
-              displayValue: dashboard[attribute],
-              dashboardGuid: dashboard.dashboardGuid,
-            })
-          }
-        }
-      })
+    const filteredDashboards = guids.reduce((acc, guid) => {
+      acc[guid] = { ...dashboards[guid] }
       return acc
     }, {})
-    console.info('search matches', matches)
-    this.setState({ searchAutoComplete: matches })
+    this.setState({
+      searchAutoComplete: null,
+      searchValue: name,
+      filteredDashboards,
+      showDeletedOnly: false,
+    })
   }
-  handleFilterSelect = value => {}
-  handleCloseSearchResults = () => {
-    this.setState({ searchAutoComplete: null })
-  }
+  handleClearSearchValue = () =>
+    this.setState({ searchValue: '', filteredDashboards: null })
+  handleCloseSearchResults = () => this.setState({ searchAutoComplete: null })
 
   renderTable = () => {
-    const { dashboards, pages, deletedDashboards, showDeletedOnly } = this.state
-    const data = showDeletedOnly ? deletedDashboards : dashboards
+    const {
+      dashboards,
+      pages,
+      deletedDashboards,
+      filteredDashboards,
+      showDeletedOnly,
+    } = this.state
+    const data = showDeletedOnly
+      ? deletedDashboards
+      : filteredDashboards
+      ? filteredDashboards
+      : dashboards
 
     return (
       <Table items={Object.values(data)}>
@@ -387,6 +400,8 @@ export default class DashboardListing extends React.PureComponent {
       restoreModalMounted,
       selectedDashboard,
       searchAutoComplete,
+      searchValue,
+      showDeletedOnly,
     } = this.state
     const { timeRange } = this.props
 
@@ -413,23 +428,36 @@ export default class DashboardListing extends React.PureComponent {
             </div>
             <div className="dashboard-listing-filter-container">
               <div className="search-input">
-                <TextField
-                  className="search-input__text-field"
-                  type={TextField.TYPE.SEARCH}
-                  placeholder="Start typing to search for account, dashboard or user names"
-                  onChange={this.handleSearchChange}
-                  onFocus={this.handleSearchFocus}
-                  autoFocus={true}
-                />
+                {searchValue ? (
+                  <div className="search__selected">
+                    <div className="search__selected-item">{searchValue}</div>
+                    <div
+                      className="search__selected-remove"
+                      onClick={this.handleClearSearchValue}
+                    >
+                      X
+                    </div>
+                  </div>
+                ) : (
+                  <TextField
+                    className="search-input__text-field"
+                    type={TextField.TYPE.SEARCH}
+                    placeholder="Start typing to search for a dashboard"
+                    onChange={this.handleSearchChange}
+                    onFocus={this.handleSearchFocus}
+                    autoFocus={true}
+                  />
+                )}
                 {searchAutoComplete && (
                   <SearchResults
                     results={searchAutoComplete}
                     closeOnClickOutside={this.handleCloseSearchResults}
-                    onSelectItem={this.handleFilterSelect}
+                    onSelectItem={this.handleSearchSelect}
                   />
                 )}
               </div>
               <Checkbox
+                checked={showDeletedOnly}
                 onChange={this.handleFilterDeleted}
                 label="Only Deleted Dashboards"
               />

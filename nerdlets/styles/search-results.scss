@@ -1,17 +1,8 @@
-.search-result__section {
-  .search-result__section-header {
-    margin: 0.5rem 0;
-    padding: 0.25rem;
-    border-top: $border;
-    border-bottom: $border;
-  }
-
-  .search-result__section-item {
-    padding: 0.15rem 0;
-    padding-left: 1rem;
-    &:hover {
-      cursor: pointer;
-      background-color: $grey2;
-    }
+.search-result__item {
+  padding: 0.15rem 0;
+  padding-left: 1rem;
+  &:hover {
+    cursor: pointer;
+    background-color: $grey2;
   }
 }

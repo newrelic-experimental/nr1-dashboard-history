@@ -17,31 +17,18 @@ export default class SearchResults extends React.Component {
     document.removeEventListener('mousedown', this.onClickOutside)
   }
 
-  renderSection = (sectionName, section) => {
-    console.info('section', sectionName, section)
-    const { onSelectItem } = this.props
-    return (
-      <div className="search-result__section">
-        <div className="search-result__section-header">{sectionName}</div>
-
-        {section.map(items => (
-          <div
-            className="search-result__section-item"
-            onClick={() => onSelectItem()}
-          >
-            {items.displayValue}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   render() {
-    const { results } = this.props
-    console.info('results', results)
+    const { results, onSelectItem } = this.props
     return (
       <div className="search-autocomplete__drawer" ref={this.myRef}>
-        {Object.keys(results).map(key => this.renderSection(key, results[key]))}
+        {Object.entries(results).map(entry => (
+          <div
+            className="search-result__item"
+            onClick={() => onSelectItem(entry[0], entry[1])}
+          >
+            {entry[0]}
+          </div>
+        ))}
       </div>
     )
   }
@@ -50,4 +37,5 @@ export default class SearchResults extends React.Component {
 SearchResults.propTypes = {
   results: PropTypes.object.isRequired,
   closeOnClickOutside: PropTypes.func.isRequired,
+  onSelectItem: PropTypes.func.isRequired,
 }
