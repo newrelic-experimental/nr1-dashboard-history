@@ -1,6 +1,6 @@
 {
   "schemaType": "NERDPACK",
-  "id": "2fbb85e8-e728-4d86-982b-c1a05cb9fc0b",
-  "displayName": "Nr1DashboardHistory",
-  "description": "View the change history of your dashbaords, and restore deleted dashboard"
+  "id": "42466e09-dcf1-40e4-b30b-34e008e6c371",
+  "displayName": "Dashboard History and Restoration",
+  "description": "View the change history of your dashboards, and restore deleted dashboards"
 }

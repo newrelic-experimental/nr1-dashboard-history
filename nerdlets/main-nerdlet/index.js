@@ -1,9 +1,96 @@
-import React from 'react';
+import React from 'react'
+import {
+  nerdlet,
+  AutoSizer,
+  PlatformStateContext,
+  NerdletStateContext,
+  Layout,
+  LayoutItem,
+} from 'nr1'
+import DashboardListing from '../components/dashboard-listing/DashboardListing'
 
-// https://docs.newrelic.com/docs/new-relic-programmable-platform-introduction
+export default class Wrapper extends React.PureComponent {
+  componentDidMount() {
+    nerdlet.setConfig({
+      accountPicker: true,
+      timePicker: true,
+      timePickerRanges: [
+        {
+          label: '60 minutes',
+          offset: 1000 * 60 * 60,
+        },
+        {
+          label: '3 hours',
+          offset: 1000 * 60 * 60 * 3,
+        },
+        {
+          label: '6 hours',
+          offset: 1000 * 60 * 60 * 6,
+        },
+        {
+          label: '12 hours',
+          offset: 1000 * 60 * 60 * 12,
+        },
+        {
+          label: '24 hours',
+          offset: 1000 * 60 * 60 * 24,
+        },
+        {
+          label: '3 days',
+          offset: 1000 * 60 * 60 * 24 * 3,
+        },
+        {
+          label: '7 days',
+          offset: 1000 * 60 * 60 * 24 * 7,
+        },
+        {
+          label: '15 days',
+          offset: 1000 * 60 * 60 * 24 * 15,
+        },
+        {
+          label: '30 days',
+          offset: 1000 * 60 * 60 * 24 * 30,
+        },
+        {
+          label: '13 months',
+          offset: 1000 * 60 * 60 * 24 * 395,
+        },
+        nerdlet.TIME_PICKER_RANGE.CUSTOM,
+      ],
+      timePickerDefaultOffset: 1000 * 60 * 60 * 24 * 7,
+    })
+  }
 
-export default class MainNerdletNerdlet extends React.Component {
   render() {
-    return <h1>Hello, main-nerdlet Nerdlet!</h1>;
+    return (
+      <PlatformStateContext.Consumer>
+        {({ timeRange, accountId }) => (
+          <NerdletStateContext.Consumer>
+            {nerdletUrlState => (
+              <AutoSizer>
+                {({ width, height }) => (
+                  <div
+                    style={{
+                      width,
+                      height,
+                      overflowX: 'hidden',
+                    }}
+                  >
+                    <Layout fullHeight={true}>
+                      <LayoutItem type={LayoutItem.TYPE.MAIN}>
+                        <DashboardListing
+                          accountId={accountId}
+                          timeRange={timeRange}
+                        />
+                      </LayoutItem>
+                    </Layout>
+                  </div>
+                )}
+              </AutoSizer>
+            )}
+          </NerdletStateContext.Consumer>
+        )}
+      </PlatformStateContext.Consumer>
+    )
   }
 }
