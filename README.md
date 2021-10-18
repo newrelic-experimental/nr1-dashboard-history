@@ -34,7 +34,8 @@ To build and deploy the app, make sure you have [set up your environment](https:
 - run `npm install`
 - run `nr1 nerdpack:uuid -gf`
 
-Follow [these instructions](https://developer.newrelic.com/build-apps/publish-deploy/serve/) to test locally.
+Follow these instructions to [test locally](https://developer.newrelic.com/build-apps/publish-deploy/serve/).
+
 Follow these instructions to [publish](https://developer.newrelic.com/build-apps/publish-deploy/publish/) the app to New Relic, and [subscribe](https://developer.newrelic.com/build-apps/publish-deploy/subscribe/) your account to use it.
 
 ## Usage Guide <a id="usage"></a>
