@@ -32,6 +32,10 @@ If you have a very large number of accounts and a centralized admin team to hand
 
 If you want to make this functionality generally accessible to all permitted users, use the `createDashboardMappings.js` - this will support deploying the app to multiple accounts, and is the most flexible overall. It does have a higher burden of configuration, as you will need to define all target accounts in the script. (Each account has to be individually defined, as each account requires its own `LICENSE KEY` in order to write the data out into the correct account space.)
 
+## How do I use the scripts?
+
+Once you have determined which script is appropriate, simply set it up as an [API Synthetic Monitor](https://docs.newrelic.com/docs/synthetics/synthetic-monitoring/scripting-monitors/write-synthetic-api-tests/) in New Relic Synthetics. Each script has some configuration attributes that need to be set up - details on these are included in the script itself.
+
 ## Other considerations
 
 ### Monitor frequency
