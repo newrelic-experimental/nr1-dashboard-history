@@ -26,6 +26,8 @@ This New Relic One app makes it simple to view the change history of any dashboa
 
 In order to display deleted dashboards in the listing, you will need to have deployed one of the [scripts](synthetics/README.md) found in [the synthetics directory](synthetics). Note that we can only keep track of dashboards that are deleted _after_ the synthetic script is running.
 
+The app will work without a Synthetic script deployed; however, only active dashboards will be displayed.
+
 To build and deploy the app, make sure you have [set up your environment](https://developer.newrelic.com/build-apps/set-up-dev-env/).
 
 ## Installation <a id="install"></a>
