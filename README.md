@@ -17,16 +17,16 @@ This New Relic One app makes it simple to view the change history of any dashboa
 ## Use Cases <a id="use-cases"></a>
 
 1. Dashboard change history quick view
+   
    You can use this app to access a quick view of a given dashboard's change history, allowing you to understand at a glance what actions have been taken against a dashboard, when and by whom.
-2. Rapid dashboard restoration
+2. Fast and easy dashboard restoration
+   
    While it is possible to locate the GUID of a deleted dashboard and [request an undelete](https://api.newrelic.com/graphiql?#query=mutation%20%7B%0A%20%20dashboardUndelete%28guid%3A%20%22%22%29%20%7B%0A%20%20%20%20errors%0A%20%20%7D%0A%7D%0A) for that GUID, there is no way to see the user-friendly name of a dashboard once it has been deleted. Without access to the dashboard name, it can be extremely difficult to identify the desired dashboard for restoration.
-   Using this app persists the mapping of a dasboard GUID to its name, even after it is deleted, allowing for rapid location and restoration.
+   Using this app maintains the mapping of a dasboard GUID to its name even after it is deleted, allowing for rapid dashboard location and restoration via button click.
 
 ## Pre-requisites <a id="pre-reqs"></a>
 
-In order to display deleted dashboards in the listing, you will need to have deployed one of the [scripts](synthetics/README.md) found in [the synthetics directory](synthetics). Note that we can only keep track of dashboards that are deleted _after_ the synthetic script is running.
-
-The app will work without a Synthetic script deployed; however, only active dashboards will be displayed.
+If you want to display deleted dashboards in the app, you will need to have deployed one of the [scripts](synthetics/README.md) found in [the synthetics directory](synthetics). Note that we can only keep track of dashboards that are deleted _after_ the synthetic script starts running.
 
 To build and deploy the app, make sure you have [set up your environment](https://developer.newrelic.com/build-apps/set-up-dev-env/).
 
