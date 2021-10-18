@@ -40,7 +40,7 @@ Follow these instructions to [publish](https://developer.newrelic.com/build-apps
 
 ## Usage Guide <a id="usage"></a>
 
-The app consists of three main components:
+The app consists of three main components - follow each link for more details:
 
 1. [Dashboard Listing](./docs/dashboard-listings.md)
 2. [Restore Workflow](./docs/restore-dashboard.md)
