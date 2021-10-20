@@ -129,6 +129,10 @@ export default class ViewHistory extends React.Component {
         'dashboard.update': 'Update',
         'dashboard.add_widgets': 'Add Widgets',
         'dashboard.update_page': 'Update Page',
+        'dashboard.update_widgets_in_page': 'Update Widgets',
+        'dashboard.snapshot.create': 'Create Snapshot',
+        'dashboard.export': 'Export',
+        'dashboard.import': 'Import',
       },
     }
     const buckets = data.reduce((acc, result) => {
